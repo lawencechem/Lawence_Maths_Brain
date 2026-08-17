@@ -2231,4 +2231,605 @@ drwxr-xr-x 1 lc 197121     0 Aug 17 18:10 ..
 -rw-r--r-- 1 lc 197121  9422 Aug 17 18:37 q3_si.json
 -rw-r--r-- 1 lc 197121 14011 Aug 17 18:37 q3_si_multibeam.json
 -rw-r--r-- 1 lc 197121  5367 Aug 17 18:37 q3_sic_multibeam.json
+q1 的"实测噪声"用盒式残差法（0.40%）高估了——该区仍有残差条纹。改用与 q2 一致的差分法（真实噪声 0.01%），并把 0.4% 标为 40× 应力测试。Airy 形状拟合在高 RMSE 和参数退化（scale 异常）下不可靠——多光束判据应基于近零极小值的能量守恒论证（结构性证据）+ X 空间 FFT 基频（形状稳健）。现在重写 Q3 正式脚本。
+
+Write c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+367 lines
+# -*- coding: utf-8 -*-
+"""
+问题3 多光束干涉分析：硅晶圆（附件3/4）+ 碳化硅复核（附件1/2）
+================================================================
+多光束必要条件（报告 §7.3）：
+  ① 界面反射率乘积 R1·R2 足够大：显著度参数 G = 4√(R1R2)/(1-R1R2) 不满足 G<<1。
+     G 度量 Airy 级数中一阶之后各项的相对贡献；G<<1 时两光束模型成立。
+  ② 层内吸收弱：α d << 1（外延层透明）。
+  ③ 光源相干长度 Lc ≥ 2 n1 d cosθ1。
+  ④ 两界面平行度：楔角使光程差展宽远小于条纹周期。
+
+检测结论（结构性证据，见下）：
+  Si（附件3/4）在低波数区出现多光束干涉：
+    · σ≈941 cm^-1 处 R 降至 0.13%，R_min/R01 ≈ 0.004，接近完全相消；
+    · 两光束闭合解要求 R12≈0.53，但其最大反射率预测 >100%，违反能量守恒；
+    · Airy 模型 R2≈R1 精确复现观测 Max≈70% / Min≈0.1%（G≈1.3）。
+  高波数区（1500-3500 cm^-1）G<0.2，两光束成立。
+  SiC（附件1/2）G<0.05，两光束成立，无需多光束修正（修正 <0.02%）。
+
+硅厚度算法（模型=Airy 多光束；算法=X 空间色散校正 FFT 基频）：
+  Airy 极值位置与两光束相同（dR/dδ=0 于 cosδ=±1），基频周期 = 1/(2n1 d cosθ1)
+  对波形形状稳健，故用 X 空间重采样后的 FFT 基频提取 d；多光束影响的是波形
+  锐化与近零极小，不改变基频。
+
+运行：PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py
+输出：results/q3_si_multibeam.json, results/q3_si.json, results/q3_sic_multibeam.json
+"""
+import os
+import sys
+import json
+
+import numpy as np
+from scipy.signal import argrelextrema
+from scipy.optimize import least_squares
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import (read_attachment, mask_band, select_window, xspace_resample,
+                    d_fft_xspace_hi, fresnel_intensity_r, snell_angle,
+                    reflectance_airy, reflectance_two_beam, refractive_index)
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA = os.path.join(ROOT, "data")
+RESULTS = os.path.join(ROOT, "results")
+
+THETA0_SI = {"附件3.xlsx": 10.0, "附件4.xlsx": 15.0}
+THETA0_SIC = {"附件1.xlsx": 10.0, "附件2.xlsx": 15.0}
+N_BOOT = 500
+SEED = 20250817
+
+
+def g_parameter(R1, R2):
+    """多光束显著度参数 G = 4√(R1R2)/(1-R1R2)。"""
+    R12 = R1 * R2
+    return 4.0 * np.sqrt(R12) / (1.0 - R12)
+
+
+def near_zero_analysis(sig, R, material, theta0, s_lo, s_hi, order=12):
+    """低波数区近零极小值分析：定位最小 R，反推两光束 R12（闭合解）、
+    Airy R2（极小值匹配）、G；并检验两光束极大值是否违反能量守恒。"""
+    m = (sig >= s_lo) & (sig <= s_hi)
+    seg_s, seg_r = sig[m], R[m]
+    imin = argrelextrema(seg_r, np.less_equal, order=order)[0]
+    if len(imin) == 0:
+        return None
+    i = imin[np.argmin(seg_r[imin])]
+    s_min = float(seg_s[i])
+    R_min = float(seg_r[i])
+    n1 = refractive_index(material, s_min)
+    R01 = float(fresnel_intensity_r(1.0, n1, theta0))
+    # 两光束闭合解：R_min = (√R01 - (1-R01)√R12)^2
+    sqR12 = (np.sqrt(R01) - np.sqrt(max(R_min, 0.0))) / (1 - R01)
+    R12_2b = float(max(sqR12, 0.0) ** 2)
+    Max_2b = R01 + (1 - R01) ** 2 * R12_2b + 2 * (1 - R01) * np.sqrt(R01 * R12_2b)
+    # Airy：R2 使极小值匹配（(√R1-√R2)^2/(1-√R1√R2)^2 = R_min）
+    # 数值解
+    def airy_min(R2):
+        r1, r2 = np.sqrt(R01), np.sqrt(R2)
+        return (r1 - r2) ** 2 / (1 - r1 * r2) ** 2
+    from scipy.optimize import brentq
+    if airy_min(0.999) > R_min:
+        R2_air = float(brentq(lambda r: airy_min(r) - R_min, R_min, 0.999))
+    else:
+        R2_air = None
+    G_air = g_parameter(R01, R2_air) if R2_air else None
+    Max_air = None
+    if R2_air:
+        r1, r2 = np.sqrt(R01), np.sqrt(R2_air)
+        Max_air = float((R01 + R2_air + 2 * r1 * r2) / (1 + R01 * R2_air + 2 * r1 * r2))
+    return {"sigma_min": s_min, "R_min": R_min, "R01": R01,
+            "R_min_over_R01": R_min / R01,
+            "R12_twobeam_closure": R12_2b,
+            "Max_twobeam_closure": Max_2b,
+            "energy_conservation_violated_2b": bool(Max_2b > 1.0),
+            "R2_airy_min_match": R2_air, "G_airy": G_air,
+            "Max_airy": Max_air, "Min_airy": float(airy_min(R2_air)) if R2_air else None}
+
+
+def g_profile(sig, R, material, theta0, s_lo, s_hi, step=250):
+    """逐段 G(σ)：局部包络幅值→R12→G。"""
+    out = []
+    for a in range(s_lo, s_hi, step):
+        b = a + step
+        m = (sig >= a) & (sig < b)
+        if m.sum() < 200:
+            continue
+        ss, rr = sig[m], R[m]
+        imax = argrelextrema(rr, np.greater_equal, order=10)[0]
+        imin = argrelextrema(rr, np.less_equal, order=10)[0]
+        if len(imax) < 2 or len(imin) < 2:
+            continue
+        A = 0.5 * (np.median(rr[imax]) - np.median(rr[imin]))
+        n1 = refractive_index(material, ss).mean()
+        R01 = fresnel_intensity_r(1.0, n1, theta0)
+        R12 = (A / (2 * (1 - R01) * np.sqrt(R01))) ** 2 if A > 0 else 0.0
+        G = g_parameter(R01, R12) if R12 > 0 else 0.0
+        out.append({"sigma_mid": 0.5 * (a + b), "amp_frac": float(A),
+                    "R12": float(R12), "G": float(G)})
+    return out
+
+
+def d_fft_windows(sig, R, material, theta0, windows):
+    """多窗口 X 空间 FFT d 估计。"""
+    rows = []
+    for win in windows:
+        sig_w, R_w = select_window(sig, R, win[0], win[1])
+        Xg, Rg = xspace_resample(sig_w, R_w, material, theta0)
+        d, fwhm = d_fft_xspace_hi(Xg, Rg)
+        rows.append({"win": list(win), "d_um": d * 1e4, "fwhm_um": fwhm * 1e4,
+                     "cycles": float(d * (Xg[-1] - Xg[0]))})
+    return rows
+
+
+def weighted_d(rows):
+    """按周期数加权平均。"""
+    w = np.array([max(r["cycles"], 0.5) for r in rows])
+    ds = np.array([r["d_um"] for r in rows])
+    return float(np.sum(w * ds) / np.sum(w))
+
+
+def bootstrap_unc(sig, R, material, theta0, win, d0, sigma_noise, n=N_BOOT):
+    """自举：全局正弦模型（基频固定）+ 高斯噪声重采样，估计 d 统计不确定。"""
+    rng = np.random.default_rng(SEED)
+    sig_w, R_w = select_window(sig, R, win[0], win[1])
+    Xg, Rg = xspace_resample(sig_w, R_w, material, theta0)
+    basis = [np.ones_like(Xg), Xg, Xg ** 2,
+             np.cos(2 * np.pi * d0 * Xg), np.sin(2 * np.pi * d0 * Xg)]
+    B = np.vstack(basis).T
+    coef, *_ = np.linalg.lstsq(B, Rg, rcond=None)
+    Rfit = B @ coef
+    resid_std = float(np.sqrt(np.mean((Rg - Rfit) ** 2)))
+    sigma_boot = max(sigma_noise, resid_std / np.sqrt(2.0))
+    boot = []
+    for _ in range(n):
+        Rb = Rfit + rng.normal(0, sigma_boot, size=len(Rg))
+        d, _ = d_fft_xspace_hi(Xg, Rb)
+        boot.append(d * 1e4)
+    return {"n": n, "sigma_noise_abs": sigma_noise, "resid_std_abs": resid_std,
+            "sigma_boot_abs": sigma_boot,
+            "std_um": float(np.std(boot)),
+            "ci95_um": [float(np.percentile(boot, 2.5)),
+                        float(np.percentile(boot, 97.5))]}
+
+
+def fit_airy_cross(sig, R, material, theta0, win, d_guess):
+    """Airy 形状拟合交叉校验（中窗口，自由 R2/phi0/scale/offset）。"""
+    sig_w, R_w = select_window(sig, R, win[0], win[1])
+    n1 = refractive_index(material, sig_w)
+    R01 = fresnel_intensity_r(1.0, n1, theta0)
+
+    def resid(p):
+        d, z, phi0, scale, offset = p
+        R2 = 0.5 / (1 + np.exp(-z))
+        Rm = reflectance_airy(sig_w, d, n1, theta0, R01, R2, phi0, scale, offset)
+        return Rm - R_w
+
+    p0 = [d_guess, np.log(0.25 / 0.25), 0.0, 1.0, 0.0]
+    res = least_squares(resid, p0, method="lm", max_nfev=60000, xtol=1e-13, ftol=1e-13)
+    R2 = 0.5 / (1 + np.exp(-res.x[1]))
+    return {"d_um": res.x[0] * 1e4, "R2": float(R2), "phi0": float(res.x[2]),
+            "scale": float(res.x[3]), "offset": float(res.x[4]),
+            "rmse_frac": float(np.sqrt(np.mean(res.fun ** 2)))}
+
+
+def main():
+    out = {"description": ("问题3 多光束干涉分析。附件3/4=Si 同一晶圆 10°/15°；"
+                           "附件1/2=SiC 复核。"),
+           "theory": ("多光束必要条件: ①R1R2 显著（G=4√(R1R2)/(1-R1R2) 不满足 G<<1）；"
+                      "②层内弱吸收；③Lc≥2n1dcosθ1；④界面平行。"
+                      "多光束影响：条纹锐化、近零极小、谐波增强；基频周期不变。"
+                      "若以两光束模型解释高对比条纹，需 R12 逼近 0.5 以上，"
+                      "其极大值预测超过 100%，违反能量守恒，故两光束失效。")}
+
+    # ---------------- A. Si 多光束检测（近零极小 + G 剖面） ----------------
+    si_detect = []
+    for fn, th in THETA0_SI.items():
+        sigma, R = read_attachment(os.path.join(DATA, fn))
+        nz = near_zero_analysis(sigma, R, "si", th, 880, 1000)
+        prof = g_profile(sigma, R, "si", th, 900, 3800, step=300)
+        si_detect.append({"file": fn, "theta0": th, "near_zero": nz,
+                          "G_profile": prof,
+                          "G_max": max(p["G"] for p in prof),
+                          "G_at_1500_3500": max(p["G"] for p in prof
+                                                if p["sigma_mid"] >= 1500)})
+    out["si_multibeam_detection"] = si_detect
+
+    # ---------------- B. Si 厚度（X 空间 FFT 基频，主方法） ----------------
+    SI_WINDOWS = [(900, 3000), (900, 3500), (1100, 2400), (1500, 3500)]
+    si_rows = []
+    for fn, th in THETA0_SI.items():
+        sigma, R = read_attachment(os.path.join(DATA, fn))
+        # 噪声（高频平坦区，差分法）
+        sig_h, R_h = select_window(sigma, R, 3600, 4000)
+        noise = float(np.sqrt(np.var(np.diff(R_h)) / 2))
+        rows = d_fft_windows(sigma, R, "si", th, SI_WINDOWS)
+        # 主窗口全范围（含低波数强条纹，6+ 周期）
+        d_main = rows[1]["d_um"]          # (900,3500)
+        d_w = weighted_d(rows)
+        # 自举（主窗口）
+        sig_w, R_w = select_window(sigma, R, 900, 3500)
+        Xg, Rg = xspace_resample(sig_w, R_w, "si", th)
+        d0, _ = d_fft_xspace_hi(Xg, Rg)
+        boot = bootstrap_unc(sigma, R, "si", th, (900, 3500), d0, noise)
+        # n 灵敏度
+        n_rows = []
+        for nscale in [0.97, 1.00, 1.03]:
+            n1 = nscale * refractive_index("si", sig_w)
+            th1 = np.arcsin(np.clip(np.sin(np.deg2rad(th)) / n1, -1, 1))
+            X = 2 * n1 * np.cos(th1) * sig_w
+            Xgn = np.linspace(X.min(), X.max(), len(X))
+            Rgn = np.interp(Xgn, X, R_w)
+            dn, _ = d_fft_xspace_hi(Xgn, Rgn)
+            n_rows.append({"n_scale": nscale, "d_um": dn * 1e4})
+        nsens = (n_rows[0]["d_um"] - n_rows[2]["d_um"]) / 2
+        si_rows.append({"file": fn, "theta0": th,
+                        "d_fft_main_um": d_main, "d_fft_weighted_um": d_w,
+                        "windows": rows,
+                        "window_spread_um": [min(r["d_um"] for r in rows),
+                                             max(r["d_um"] for r in rows)],
+                        "bootstrap": boot,
+                        "n_sensitivity_um_per_1pct": nsens,
+                        "n_rows": n_rows,
+                        "noise_abs": noise})
+    out["si_thickness"] = si_rows
+
+    # ---------------- C. SiC 多光束复核 ----------------
+    sic_rows = []
+    for fn, th in THETA0_SIC.items():
+        sigma, R = read_attachment(os.path.join(DATA, fn))
+        sig_m, R_m = mask_band(sigma, R, 700.0, 1100.0)
+        prof = g_profile(sig_m, R_m, "sic", th, 1100, 3800, step=300)
+        # Airy vs 两光束拟合（有效窗口，RMSE 对比）
+        sig_w, R_w = select_window(sig_m, R_m, 1500, 2800)
+        n1 = refractive_index("sic", sig_w)
+        R01 = fresnel_intensity_r(1.0, n1, th)
+        Xg, Rg = xspace_resample(sig_w, R_w, "sic", th)
+        d0, _ = d_fft_xspace_hi(Xg, Rg)
+        fit_rows = {}
+        for model in ["twobeam", "airy"]:
+            def resid(p, model=model):
+                d, z, phi0, scale, offset = p
+                R2 = 0.5 / (1 + np.exp(-z))
+                if model == "airy":
+                    Rm = reflectance_airy(sig_w, d, n1, theta0, R01, R2, phi0, scale, offset)
+                else:
+                    Rm = reflectance_two_beam(sig_w, d, n1, theta0, R2, phi0, scale, offset)
+                return Rm - R_w
+            res = least_squares(resid, [d0, np.log(0.05 / 0.45), 0.0, 1.0, 0.0],
+                                method="lm", max_nfev=40000)
+            fit_rows[model] = {"d_um": res.x[0] * 1e4,
+                               "rmse_frac": float(np.sqrt(np.mean(res.fun ** 2)))}
+        d_corr = fit_rows["airy"]["d_um"] - fit_rows["twobeam"]["d_um"]
+        sic_rows.append({"file": fn, "theta0": th,
+                         "G_profile": prof,
+                         "G_max_1500_3800": max(p["G"] for p in prof
+                                                if p["sigma_mid"] >= 1500),
+                         "fit_twobeam": fit_rows["twobeam"],
+                         "fit_airy": fit_rows["airy"],
+                         "d_airy_minus_twobeam_um": d_corr})
+    out["sic_multibeam_check"] = sic_rows
+
+    # ---------------- D. 判定与结论 ----------------
+    G_si_max = max(r["G_max"] for r in si_detect)          # 含低波数近零极小
+    G_si_1500 = max(r["G_at_1500_3500"] for r in si_detect)
+    G_sic_max = max(r["G_max_1500_3800"] for r in sic_rows)
+    d_si_10 = si_rows[0]["d_fft_weighted_um"]
+    d_si_15 = si_rows[1]["d_fft_weighted_um"]
+    d_si = 0.5 * (d_si_10 + d_si_15)
+    # 统计不确定：窗口+角度散布
+    spread = max(max(r["window_spread_um"][1] for r in si_rows) - d_si,
+                 d_si - min(r["window_spread_um"][0] for r in si_rows))
+    angle_diff = abs(d_si_10 - d_si_15) / d_si
+    # n 系统误差（10° 平均灵敏度）
+    nsens_avg = 0.5 * (si_rows[0]["n_sensitivity_um_per_1pct"]
+                       + si_rows[1]["n_sensitivity_um_per_1pct"])
+    d_si_sys_n = abs(nsens_avg) * 1.5
+
+    out["conclusion"] = {
+        "Si_multibeam_present": True,
+        "Si_multibeam_evidence": ("低波数 σ≈941 cm^-1 近零极小（R_min≈0.13% vs R01≈30%）；"
+                                  "两光束闭合解违反能量守恒（Max>100%）；"
+                                  "Airy R2≈R1 复现 Max≈70%/Min≈0.1%（G≈1.3）。"
+                                  "高波数区 G<0.2，两光束成立。"),
+        "SiC_multibeam_negligible": True,
+        "SiC_evidence": f"G_max={G_sic_max:.3f}<<1；Airy 与两光束拟合 d 差 <0.03%",
+        "G_si_low_wavenumber": G_si_max,
+        "G_si_1500_3500": G_si_1500,
+        "G_sic_1500_3800": G_sic_max,
+        "d_si_10deg_um": d_si_10, "d_si_15deg_um": d_si_15,
+        "d_si_weighted_um": d_si,
+        "d_si_stat_uncertainty_um": spread,
+        "d_si_systematic_n_um": d_si_sys_n,
+        "angle_consistency_rel": angle_diff,
+        "SiC_correction_needed": False,
+        "interpretation": ("Si 存在多光束干涉（低波数区，近零极小+能量守恒论证），"
+                           "模型应为 Airy；基频周期对波形稳健，d_Si≈%.2fum。"
+                           "SiC 的 G 远小于 1，两光束成立，问题2 结果无需修正。") % d_si,
+    }
+
+    os.makedirs(RESULTS, exist_ok=True)
+    with open(os.path.join(RESULTS, "q3_si_multibeam.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(RESULTS, "q3_si.json"), "w", encoding="utf-8") as f:
+        json.dump({"si_multibeam_detection": si_detect,
+                   "si_thickness": si_rows, "conclusion": out["conclusion"]},
+                  f, ensure_ascii=False, indent=2)
+    with open(os.path.join(RESULTS, "q3_sic_multibeam.json"), "w", encoding="utf-8") as f:
+        json.dump({"sic_multibeam_check": sic_rows, "conclusion": out["conclusion"]},
+                  f, ensure_ascii=False, indent=2)
+
+    print("=== 问题3 多光束干涉分析结果 ===")
+    print("\n[Si 多光束检测]")
+    for r in si_detect:
+        nz = r["near_zero"]
+        print(f"  {r['file']} ({r['theta0']}°): σ_min={nz['sigma_min']:.0f} "
+              f"R_min={nz['R_min']*100:.3f}% (R01={nz['R01']*100:.1f}%, "
+              f"比={nz['R_min_over_R01']:.3f})")
+        print(f"    两光束闭合 R12={nz['R12_twobeam_closure']:.3f} → Max={nz['Max_twobeam_closure']*100:.0f}% "
+              f"(违反能量守恒={nz['energy_conservation_violated_2b']})")
+        print(f"    Airy R2={nz['R2_airy_min_match']:.3f} G={nz['G_airy']:.2f} "
+              f"→ Max={nz['Max_airy']*100:.0f}% Min={nz['Min_airy']*100:.1f}%  "
+              f"(观测 Max≈70% Min≈0.1%)")
+        print(f"    G 剖面: max={r['G_max']:.2f} (低波数), "
+              f"1500+ 区 max={r['G_at_1500_3500']:.2f}")
+    print("\n[Si 厚度]")
+    for r in si_rows:
+        b = r["bootstrap"]
+        print(f"  {r['file']} ({r['theta0']}°): d(加权)={r['d_fft_weighted_um']:.3f} um  "
+              f"主窗口(900-3500)={r['d_fft_main_um']:.3f}  "
+              f"窗口范围=[{r['window_spread_um'][0]:.2f},{r['window_spread_um'][1]:.2f}]")
+        print(f"    自举 σ={b['std_um']:.3f} um 95%CI=[{b['ci95_um'][0]:.3f},{b['ci95_um'][1]:.3f}]  "
+              f"n 灵敏度 ±1.5% → {r['n_sensitivity_um_per_1pct']*1.5:.3f} um")
+    print("\n[SiC 复核]")
+    for r in sic_rows:
+        print(f"  {r['file']} ({r['theta0']}°): G_max(1500+)= {r['G_max_1500_3800']:.3f}  "
+              f"两光束 d={r['fit_twobeam']['d_um']:.3f}  Airy d={r['fit_airy']['d_um']:.3f}  "
+              f"Δd={r['d_airy_minus_twobeam_um']:.3f} um")
+    c = out["conclusion"]
+    print("\n判定: Si 多光束 =", c["Si_multibeam_present"],
+          "| SiC 多光束可忽略 =", c["SiC_multibeam_negligible"])
+    print(f"d_Si = {d_si:.2f} ± {spread:.2f} um (统计) ± {d_si_sys_n:.2f} um (n 系统)")
+    print(f"10°/15° 相对差 = {angle_diff*100:.2f}%")
+    print("结论:", c["interpretation"])
+
+
+if __name__ == "__main__":
+    main()
+Bash 运行重写后的 Q3 脚本
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py 2>&1
+
+OUT
+Exit code 1
+Traceback (most recent call last):
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 366, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 197, in main
+    nz = near_zero_analysis(sigma, R, "si", th, 880, 1000)
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 81, in near_zero_analysis
+    R2_air = float(brentq(lambda r: airy_min(r) - R_min, R_min, 0.999))
+                   ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_zeros_py.py", line 858, in brentq
+    r = _zeros._brentq(f, a, b, xtol, rtol, maxiter, args, full_output, disp)
+ValueError: f(a) and f(b) must have different signs
+brentq 括号下界错误。修复为 [R1, 0.999]（airy_min(R1)=0 < R_min）。
+
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Added 1 line
+Bash 重跑 Q3 脚本
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py 2>&1
+
+OUT
+Exit code 1
+Traceback (most recent call last):
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 367, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 268, in main
+    res = least_squares(resid, [d0, np.log(0.05 / 0.45), 0.0, 1.0, 0.0],
+                        method="lm", max_nfev=40000)
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\_lib\_util.py", line 660, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_lsq\least_squares.py", line 926, in least_squares
+    vector_fun = VectorFunction(
+        fun_wrapped,
+    ...<6 lines>...
+        workers=workers
+    )
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_differentiable_functions.py", line 614, in __init__
+    self._update_fun()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_differentiable_functions.py", line 707, in _update_fun
+    self.f = self.fun_wrapped(xp_copy(self.x))
+             ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_differentiable_functions.py", line 424, in __call__
+    return np.atleast_1d(self.fun(x))
+                         ~~~~~~~~^^^
+  File "C:\Users\lc\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_lsq\least_squares.py", line 263, in __call__
+    return self.f(x, *self.args, **self.kwargs)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 266, in resid
+    Rm = reflectance_two_beam(sig_w, d, n1, theta0, R2, phi0, scale, offset)
+                                            ^^^^^^
+NameError: name 'theta0' is not defined
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Modified
+Bash 重跑 Q3 脚本
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py 2>&1
+
+OUT
+=== 问题3 多光束干涉分析结果 ===
+
+[Si 多光束检测]
+  附件3.xlsx (10.0°): σ_min=941 R_min=0.134% (R01=30.0%, 比=0.004)
+    两光束闭合 R12=0.531 → Max=112% (违反能量守恒=True)
+    Airy R2=0.328 G=1.39 → Max=73% Min=0.1%  (观测 Max≈70% Min≈0.1%)
+    G 剖面: max=0.26 (低波数), 1500+ 区 max=0.26
+  附件4.xlsx (15.0°): σ_min=946 R_min=0.349% (R01=30.0%, 比=0.012)
+    两光束闭合 R12=0.486 → Max=107% (违反能量守恒=True)
+    Airy R2=0.345 G=1.43 → Max=74% Min=0.3%  (观测 Max≈70% Min≈0.1%)
+    G 剖面: max=0.29 (低波数), 1500+ 区 max=0.03
+
+[Si 厚度]
+  附件3.xlsx (10.0°): d(加权)=3.491 um  主窗口(900-3500)=3.491  窗口范围=[3.42,3.54]
+    自举 σ=0.006 um 95%CI=[3.480,3.503]  n 灵敏度 ±1.5% → 0.158 um
+  附件4.xlsx (15.0°): d(加权)=3.464 um  主窗口(900-3500)=3.463  窗口范围=[3.40,3.51]
+    自举 σ=0.006 um 95%CI=[3.452,3.474]  n 灵敏度 ±1.5% → 0.157 um
+
+[SiC 复核]
+  附件1.xlsx (10.0°): G_max(1500+)= 0.018  两光束 d=7.472  Airy d=7.472  Δd=-0.000 um
+  附件2.xlsx (15.0°): G_max(1500+)= 0.016  两光束 d=7.435  Airy d=7.435  Δd=0.000 um
+
+判定: Si 多光束 = True | SiC 多光束可忽略 = True
+d_Si = 3.48 ± 0.07 um (统计) ± 0.16 um (n 系统)
+10°/15° 相对差 = 0.78%
+结论: Si 存在多光束干涉（低波数区，近零极小+能量守恒论证），模型应为 Airy；基频周期对波形稳健，d_Si≈3.48um。SiC 的 G 远小于 1，两光束成立，问题2 结果无需修正。
+Q3 跑通。发现两个需修正的点：①n 灵敏度标签错误（nsens 是按 ±3% 步长算的，却按 ±1.5% 报告，且 *1.5 双重计数）；②G 剖面（窗口中值幅值）低估近零极小处的峰值 G——结论里应直接用近零闭合的 G≈1.4。修正 q3 与 q2 的 n 灵敏度。
+
+Read c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py (lines 141-200)
+Read c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py (lines 211-290)
+Read c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py (lines 289-363)
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Added 1 line
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Added 4 lines
+Now update the print sections for the corrected labels:
+
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Modified
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Modified
+Bash 重跑修正后的 Q3
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py 2>&1
+
+OUT
+Exit code 1
+Traceback (most recent call last):
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 372, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\lc\Desktop\f5\code\q3_si_multibeam.py", line 303, in main
+    "Si_multibeam_evidence": ("低波数 σ≈941 cm^-1 近零极小（R_min≈0.13% vs R01≈30%，"
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                              "R_min/R01≈0.004）；两光束闭合解违反能量守恒（Max>100%）；"
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                              "Airy R2≈R1 复现 Max≈70%/Min≈0.1%（峰值 G≈%.1f）。"
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                              "高波数区代表性 G<0.3，两光束近似成立。") % G_si_peak,
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+ValueError: unsupported format character 'v' (0x76) at index 33
+% 格式化与字符串中的字面 %（如 30%）冲突。改用 f-string。
+
+Edit c:\Users\lc\Desktop\f5\code\q3_si_multibeam.py
+Modified
+Bash 重跑修正后的 Q3
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q3_si_multibeam.py 2>&1
+
+OUT
+=== 问题3 多光束干涉分析结果 ===
+
+[Si 多光束检测]
+  附件3.xlsx (10.0°): σ_min=941 R_min=0.134% (R01=30.0%, 比=0.004)
+    两光束闭合 R12=0.531 → Max=112% (违反能量守恒=True)
+    Airy R2=0.328 G=1.39 → Max=73% Min=0.1%  (观测 Max≈70% Min≈0.1%)
+    峰值 G(近零极小)=1.39; G 剖面 max=0.26 (代表性), 1500+ 区 max=0.26
+  附件4.xlsx (15.0°): σ_min=946 R_min=0.349% (R01=30.0%, 比=0.012)
+    两光束闭合 R12=0.486 → Max=107% (违反能量守恒=True)
+    Airy R2=0.345 G=1.43 → Max=74% Min=0.3%  (观测 Max≈70% Min≈0.1%)
+    峰值 G(近零极小)=1.43; G 剖面 max=0.29 (代表性), 1500+ 区 max=0.03
+
+[Si 厚度]
+  附件3.xlsx (10.0°): d(加权)=3.491 um  主窗口(900-3500)=3.491  窗口范围=[3.42,3.54]
+    自举 σ=0.006 um 95%CI=[3.480,3.503]  n 灵敏度 per 1% → 0.035 um
+  附件4.xlsx (15.0°): d(加权)=3.464 um  主窗口(900-3500)=3.463  窗口范围=[3.40,3.51]
+    自举 σ=0.006 um 95%CI=[3.452,3.474]  n 灵敏度 per 1% → 0.035 um
+
+[SiC 复核]
+  附件1.xlsx (10.0°): G_max(1500+)= 0.018  两光束 d=7.472  Airy d=7.472  Δd=-0.000 um
+  附件2.xlsx (15.0°): G_max(1500+)= 0.016  两光束 d=7.435  Airy d=7.435  Δd=0.000 um
+
+判定: Si 多光束 = True | SiC 多光束可忽略 = True
+d_Si = 3.48 ± 0.07 um (统计) ± 0.03 um (n 系统)
+10°/15° 相对差 = 0.78%
+结论: Si 存在多光束干涉（低波数区，近零极小+能量守恒论证），模型应为 Airy；Airy 极值位置与两光束相同，基频周期对波形稳健，d_Si≈3.48um。SiC 的 G 远小于 1，两光束成立，问题2 结果无需修正。
+q3 数字正确（n 灵敏度 per 1% = 0.035 um，±1% → ±0.03 um）。现在修正 q2 的同类 n 灵敏度标签错误。
+
+Read c:\Users\lc\Desktop\f5\code\q2_sic_thickness.py (lines 91-135)
+Read c:\Users\lc\Desktop\f5\code\q2_sic_thickness.py (lines 135-189)
+Edit c:\Users\lc\Desktop\f5\code\q2_sic_thickness.py
+Added 1 line
+Edit c:\Users\lc\Desktop\f5\code\q2_sic_thickness.py
+Added 3 lines
+Bash 重跑修正后的 Q2
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q2_sic_thickness.py 2>&1
+
+OUT
+=== 问题2 碳化硅厚度结果 ===
+10°: d = 7.494 um    15°: d = 7.437 um
+加权平均: d = 7.465 ± 0.072 um (统计)
+10°/15° 相对差: 0.76%
+折射率灵敏度: per 1% n → ±0.075 um;  ±3% → ±0.226 um
+噪声水平 (差分法, 3600-4000): σ=0.010%
+自举 (n=500, σ_boot=0.099%): σ=0.004 um, 95%CI=[7.455, 7.471]
+窗口估计 10°: 7.54, 7.49, 7.44, 7.45, 7.42, 7.56, 7.56, 7.50
+窗口估计 15°: 7.44, 7.39, 7.37, 7.35, 7.34, 7.56, 7.51, 7.66
+
+结论: 附件1(10°) 与附件2(15°) 结果一致；主估计 d = 7.47 ± 0.07 um（统计），系统误差（折射率 ±3%）约 ±0.23 um。
+Q2 数字修正到位：d_SiC = 7.47 ± 0.07（统计）± 0.23（n±3%）。重跑 q1 并确认全部结果文件。
+
+Bash 重跑 Q1 并列出结果文件
+IN
+cd c:/Users/lc/Desktop/f5 && PYTHONIOENCODING=utf-8 python code/q1_model_check.py 2>&1 && echo "---RESULTS---" && ls -la results/
+
+OUT
+=== 问题1 合成验证摘要 ===
+实测噪声水平 (附件1 3600-4000): 0.4039%
+
+SiC 两光束 7.5um, 10°:
+  噪声= 0.000% θ=  10°  d_fft=   7.500 (±-0.000)  d_hil=   7.504 (±+0.004)
+  噪声= 0.404% θ=  10°  d_fft=   7.498 (±-0.002)  d_hil=   7.509 (±+0.009)
+  噪声= 0.808% θ=  10°  d_fft=   7.496 (±-0.004)  d_hil=   7.513 (±+0.013)
+
+SiC 两光束 7.5um, 15°:
+  噪声= 0.000% θ=  15°  d_fft=   7.499 (±-0.001)  d_hil=   7.512 (±+0.012)
+  噪声= 0.404% θ=  15°  d_fft=   7.498 (±-0.002)  d_hil=   7.517 (±+0.017)
+  噪声= 0.808% θ=  15°  d_fft=   7.496 (±-0.004)  d_hil=   7.521 (±+0.021)
+
+Si 两光束 3.5um, 10°:
+  噪声= 0.000% θ=  10°  d_fft=   3.499 (±-0.001)  d_hil=   3.511 (±+0.011)
+  噪声= 0.404% θ=  10°  d_fft=   3.499 (±-0.001)  d_hil=   3.511 (±+0.011)
+  噪声= 0.808% θ=  10°  d_fft=   3.500 (±-0.000)  d_hil=   3.511 (±+0.011)
+
+Si 两光束 3.5um, 15°:
+  噪声= 0.000% θ=  15°  d_fft=   3.499 (±-0.001)  d_hil=   3.511 (±+0.011)
+  噪声= 0.404% θ=  15°  d_fft=   3.499 (±-0.001)  d_hil=   3.511 (±+0.011)
+  噪声= 0.808% θ=  15°  d_fft=   3.500 (±-0.000)  d_hil=   3.512 (±+0.012)
+
+SiC 两光束 7.5um, 10°, φ0=0.3:
+  噪声= 0.000% θ=  10°  d_fft=   7.501 (±+0.001)  d_hil=   7.478 (±-0.022)
+  噪声= 0.404% θ=  10°  d_fft=   7.498 (±-0.002)  d_hil=   7.465 (±-0.035)
+
+输出: C:\Users\lc\Desktop\f5\results\q1_model_check.json
+---RESULTS---
+total 64
+drwxr-xr-x 1 lc 197121     0 Aug 17 18:28 .
+drwxr-xr-x 1 lc 197121     0 Aug 17 18:10 ..
+-rw-r--r-- 1 lc 197121  5698 Aug 17 18:37 q1_model_check.json
+-rw-r--r-- 1 lc 197121  6204 Aug 17 18:37 q2_sic.json
+-rw-r--r-- 1 lc 197121  1436 Aug 17 18:37 q2_sic_reliability.json
+-rw-r--r-- 1 lc 197121  9422 Aug 17 18:37 q3_si.json
+-rw-r--r-- 1 lc 197121 14011 Aug 17 18:37 q3_si_multibeam.json
+-rw-r--r-- 1 lc 197121  5367 Aug 17 18:37 q3_sic_multibeam.json
 q1 的"实测噪声"用盒式残差法（0.40%）高估了——该区仍有残差条纹。改用与 q2 一致的差分法（真实噪声 0.01%），并把 0.4% 标为 40× 应力测试。

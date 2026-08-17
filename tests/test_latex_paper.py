@@ -29,13 +29,13 @@ class LatexPaperTests(unittest.TestCase):
     def test_prepares_bundled_template_without_overwriting(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "完整论文-LaTeX"
-            result = prepare_project(output, contest="cumcm")
+            result = prepare_project(output)
 
             self.assertEqual(Path(result["main_tex"]), output / "main.tex")
             self.assertTrue((output / "references.bib").is_file())
             self.assertTrue((output / "latex-project.json").is_file())
             with self.assertRaises(FileExistsError):
-                prepare_project(output, contest="cumcm")
+                prepare_project(output)
 
     def test_copies_complete_official_template_project(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -60,34 +60,6 @@ class LatexPaperTests(unittest.TestCase):
             self.assertEqual(Path(result["main_tex"]).name, "paper.tex")
             self.assertTrue((root / "paper" / "official.cls").is_file())
             self.assertTrue((root / "paper" / "cover.tex").is_file())
-
-    def test_supports_generic_template_with_nested_main_and_provenance(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            template = root / "official"
-            (template / "src").mkdir(parents=True)
-            (template / "src" / "paper.tex").write_text(
-                r"\documentclass{article}\begin{document}x\end{document}",
-                encoding="utf-8",
-            )
-
-            result = prepare_project(
-                root / "paper",
-                contest="generic",
-                template_path=template,
-                main_file="src/paper.tex",
-                template_source="https://contest.example/template",
-                template_version="2026",
-            )
-            manifest = json.loads(
-                (root / "paper" / "latex-project.json").read_text(encoding="utf-8")
-            )
-
-            self.assertEqual(Path(result["main_tex"]), root / "paper/src/paper.tex")
-            self.assertEqual(manifest["main_tex"], "src/paper.tex")
-            self.assertEqual(manifest["template"]["version"], "2026")
-            with self.assertRaisesRegex(ValueError, "必须"):
-                prepare_project(root / "missing", contest="generic")
 
     def test_inspects_nested_sources_figures_tables_and_bibliography(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -170,7 +142,7 @@ See \cite{missing}.\end{document}
 
             self.assertTrue(any("重复 label" in item for item in issues))
 
-    def test_all_contests_have_no_fixed_figure_quality_default(self):
+    def test_cumcm_has_no_fixed_figure_quality_default(self):
         with tempfile.TemporaryDirectory() as temporary:
             main = Path(temporary) / "main.tex"
             main.write_text(
@@ -182,23 +154,21 @@ See \cite{missing}.\end{document}
                 encoding="utf-8",
             )
 
-            for contest in ("cumcm", "mcm-icm"):
-                report = inspect_paper(
-                    main,
-                    contest=contest,
-                    quality_checks=True,
-                    min_content_units=0,
-                    min_pages=0,
-                    min_equations=0,
-                    min_tables=0,
-                    require_pdf=False,
-                    questions=["q1"],
-                    override_reason="单元测试跳过 PDF",
-                )
-                self.assertFalse(
-                    any("低于质量目标" in issue and "图" in issue for issue in report["issues"]),
-                    (contest, report["issues"]),
-                )
+            report = inspect_paper(
+                main,
+                quality_checks=True,
+                min_content_units=0,
+                min_pages=0,
+                min_equations=0,
+                min_tables=0,
+                require_pdf=False,
+                questions=["q1"],
+                override_reason="单元测试跳过 PDF",
+            )
+            self.assertFalse(
+                any("低于质量目标" in issue and "图" in issue for issue in report["issues"]),
+                report["issues"],
+            )
 
     def test_rejects_sources_outside_project_and_missing_engine(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -402,7 +372,6 @@ $$c=3$$
             with self.assertRaisesRegex(ValueError, "跳过 PDF"):
                 inspect_paper(
                     main,
-                    contest="mcm-icm",
                     quality_checks=True,
                     require_pdf=False,
                     questions=["q1"],
@@ -410,7 +379,6 @@ $$c=3$$
             with self.assertRaisesRegex(ValueError, "min_image_dpi"):
                 inspect_paper(
                     main,
-                    contest="mcm-icm",
                     quality_checks=True,
                     min_image_dpi=150,
                     questions=["q1"],
@@ -443,7 +411,6 @@ $$c=3$$
 
             report = inspect_paper(
                 main,
-                contest="mcm-icm",
                 quality_checks=True,
                 require_pdf=False,
                 questions=["q1", "q2"],
@@ -634,71 +601,6 @@ $$c=3$$
             with self.assertRaisesRegex(ValueError, r"\\appendix"):
                 inspect_paper(main, appendix_start_page=2)
 
-    def test_non_cumcm_page_limit_uses_total_pdf_pages(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            parent = Path(temporary)
-            root = parent / "project"
-            root.mkdir()
-            main = root / "main.tex"
-            main.write_text(
-                r"""
-\documentclass{article}\newcommand{\keywords}[1]{#1}
-\begin{document}
-\begin{abstract}Summary\keywords{test}\end{abstract}
-\section{Body}Body
-\appendix
-\section{Appendix code}Code
-\end{document}
-""",
-                encoding="utf-8",
-            )
-            pdf = parent / "paper.pdf"
-            pdf.write_bytes(b"bound pdf")
-            pdf.with_suffix(".build.json").write_text(
-                json.dumps({
-                    "passed": True,
-                    "main_tex": "main.tex",
-                    "source_sha256": source_bundle_sha256(main),
-                    "pdf_sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(),
-                }),
-                encoding="utf-8",
-            )
-            audit = {
-                "pages": 35,
-                "blank_pages": [],
-                "page_sizes_pt": [[595.3, 841.9]],
-                "unembedded_fonts": [],
-                "raster_images": 0,
-                "min_image_dpi": None,
-                "_page_texts": [
-                    "Summary",
-                    *(f"Body page {number}" for number in range(2, 31)),
-                    "Appendix code",
-                    "Code",
-                    "Code",
-                    "Code",
-                    "Code",
-                ],
-                "issues": [],
-            }
-
-            for contest in ("mcm-icm", "generic"):
-                with self.subTest(contest=contest), patch(
-                    "latex_paper._audit_pdf",
-                    return_value={**audit, "_page_texts": list(audit["_page_texts"])},
-                ):
-                    report = inspect_paper(
-                        main,
-                        contest=contest,
-                        pdf_path=pdf,
-                        max_pages=30,
-                    )
-
-                self.assertTrue(
-                    any("PDF 总页数 35" in issue for issue in report["issues"]),
-                    report["issues"],
-                )
-
     def test_pdf_audit_detects_blank_pages_and_page_size_changes(self):
         from pypdf import PdfWriter
 
@@ -778,7 +680,7 @@ $$c=3$$
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary)
             latex_root = project_root / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             main = Path(result["main_tex"])
             source = project_root / "figures"
             source.mkdir()
@@ -801,7 +703,7 @@ $$c=3$$
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary)
             latex_root = project_root / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             source = project_root / "figures" / "result_q1.png"
             source.parent.mkdir()
             source.write_bytes(b"same image")
@@ -820,7 +722,7 @@ $$c=3$$
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary)
             latex_root = project_root / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             source = project_root / "figures" / "result_q1.png"
             source.parent.mkdir()
             source.write_bytes(b"same image")
@@ -841,7 +743,7 @@ $$c=3$$
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary)
             latex_root = project_root / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             manifest_path = latex_root / "latex-project.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest.pop("resource_bindings")
@@ -859,7 +761,7 @@ $$c=3$$
     def test_unbound_resource_in_any_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             latex_root = Path(temporary) / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             image = latex_root / "images" / "result_q1.png"
             image.parent.mkdir()
             image.write_bytes(b"unbound")
@@ -874,7 +776,7 @@ $$c=3$$
     def test_unbound_common_code_and_data_formats_are_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             latex_root = Path(temporary) / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             resources = {
                 "code/model.ipynb": b"{}",
                 "code/solver.cpp": b"int main(){}",
@@ -895,7 +797,7 @@ $$c=3$$
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary)
             latex_root = project_root / "完整论文-LaTeX"
-            result = prepare_project(latex_root, contest="cumcm")
+            result = prepare_project(latex_root)
             (latex_root / "code").mkdir()
 
             with self.assertRaisesRegex(ValueError, "PROJECT_ROOT 根目录"):

@@ -11,7 +11,7 @@ description: 从官方或内置模板创建、编译和校验数学建模 LaTeX 
 - 模板和脚本从本目录读取；论文项目只写入 `PROJECT_ROOT`。
 - 官方模板、题目附件和 Skill 文件保持只读；先复制，再填充。
 - 默认不覆盖已有输出目录。
-- 初始化生成 `latex-project.json`，记录主入口、竞赛配置、模板来源、版本、哈希与资源绑定；不要手工删除或伪造。
+- 初始化生成 `latex-project.json`，记录主入口、模板来源、版本、哈希与资源绑定；不要手工删除或伪造。
 
 ## 环境诊断
 
@@ -30,7 +30,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" doctor `
 
 1. 用户提供的当届官方 LaTeX 模板项目。
 2. 从目标竞赛官方网站取得的当届 LaTeX 模板项目。
-3. `assets/templates/cumcm/` 或 `assets/templates/mcm-icm/` 构建基线。
+3. `assets/templates/cumcm/` 构建基线。
 
 内置模板只在没有官方 LaTeX 模板时使用，不替代当届官方规则。复制官方模板目录时保留其 `.cls`、`.sty`、`.bst`、字体和图片资源，不重写导言区或文档类。
 
@@ -39,14 +39,13 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" doctor `
 ```powershell
 python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" init `
   "<PROJECT_ROOT>/完整论文-LaTeX" `
-  --contest cumcm `
   --template "<PROJECT_ROOT>/当届官方LaTeX模板" `
   --main "src/paper.tex" `
   --template-source "<官方模板页面URL>" `
   --template-version "<适用届次或版本>"
 ```
 
-没有官方模板时同时省略 `--template`、`--main` 和模板元数据。官方模板入口为 `main.tex` 或只有一个顶层 `.tex` 时可省略 `--main`；入口位于子目录或存在多个候选文件时必须按官方说明显式指定，不能猜测。CUMCM、MCM/ICM 以外的竞赛使用 `--contest generic`，且必须提供当届官方模板。初始化后在复制件中填充正文，并把核验后的 BibTeX 条目放入项目；不得修改模板源文件。
+没有官方模板时同时省略 `--template`、`--main` 和模板元数据。官方模板入口为 `main.tex` 或只有一个顶层 `.tex` 时可省略 `--main`；入口位于子目录或存在多个候选文件时必须按官方说明显式指定，不能猜测。初始化后在复制件中填充正文，并把核验后的 BibTeX 条目放入项目；不得修改模板源文件。
 
 ## 绑定代码与图表资源
 
@@ -98,7 +97,6 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" build `
 python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate `
   "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" `
   --pdf "<PROJECT_ROOT>/完整论文.pdf" `
-  --contest cumcm `
   --quality-checks `
   --questions q1 q2 q3 `
   --min-image-dpi 300 `
@@ -106,7 +104,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate `
   --body-start-page <正文在PDF中的第一页>
 ```
 
-论文包含附录时再加 `--appendix-start-page <附录在PDF中的第一页>`，且源码必须真实包含 `\appendix` 或 `appendices` 环境。CUMCM 电子版 PDF 若第 1 页为摘要、正文从第 2 页开始，可传 `--body-start-page 2`；必须以实际 PDF 和当届官方模板为准。工具会尝试根据附录首个章节标题自动定位，但无法唯一定位时会阻断并要求显式页码，不能退回用 PDF 总页数猜测正文页数。`mcm-icm` 与 `generic` 的 `--max-pages` 默认校验 PDF 总页数，不套用 CUMCM 的正文口径，也不接受正文/附录页码参数。
+论文包含附录时再加 `--appendix-start-page <附录在PDF中的第一页>`，且源码必须真实包含 `\appendix` 或 `appendices` 环境。CUMCM 电子版 PDF 若第 1 页为摘要、正文从第 2 页开始，可传 `--body-start-page 2`；必须以实际 PDF 和当届官方模板为准。工具会尝试根据附录首个章节标题自动定位，但无法唯一定位时会阻断并要求显式页码，不能退回用 PDF 总页数猜测正文页数。
 
 校验器递归读取项目内的 `\input` 与 `\include`，忽略 `verbatim`、`lstlisting`、`minted`、`comment` 和 `\verb` 中的伪命令，并检查：
 
@@ -120,7 +118,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate `
 - LaTeX 项目中的代码和图表副本是否与 `PROJECT_ROOT` 权威来源绑定且未漂移；
 - PDF 空白页、页面尺寸、字体嵌入和内嵌位图 DPI。
 
-CUMCM 的约 15000 字词单位、约 20 页、5 个公式和 3 个表只是可覆盖的完整度质量目标。图数由主张—证据映射决定，不设统一最低值；质量校验通过 `fig:qN-*`、`tab:qN-*` 或 `eq:qN-*` 检查每个子问题的正式证据覆盖。页数上限等官方硬约束必须从目标届次规则读取后通过参数传入。MCM/ICM 不内置永久页数阈值。
+CUMCM 的约 15000 字词单位、约 20 页、5 个公式和 3 个表只是可覆盖的完整度质量目标。图数由主张—证据映射决定，不设统一最低值；质量校验通过 `fig:qN-*`、`tab:qN-*` 或 `eq:qN-*` 检查每个子问题的正式证据覆盖。页数上限等官方硬约束必须从目标届次规则读取后通过参数传入。
 
 所有阈值必须是非负数，页数上限和最低 DPI 必须为正数。降低默认质量目标或临时使用 `--no-require-pdf` 跳过 PDF 审计时，必须同时传入 `--override-reason "<官方条款、用户要求或阶段性原因>"`，并由校验报告记录；跳过 PDF 的报告不能用于最终交付。质量校验必须通过 `--questions` 明确列出全部子问题，不能只为问题一集中出图。
 

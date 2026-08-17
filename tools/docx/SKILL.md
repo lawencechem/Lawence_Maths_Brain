@@ -25,7 +25,6 @@ sys.path.insert(0, str(scripts))
 import paper_format as pf
 
 doc = pf.new_document(
-    contest="cumcm",
     template_path=Path("<PROJECT_ROOT>") / "当届官方模板.docx",
     preserve_template_content=False,
 )
@@ -37,7 +36,7 @@ pf.body(doc, "摘要正文。")
 pf.keywords(doc, "优化；预测")
 pf.equation(doc, r"\min f(x)=\sum_{i=1}^{n}x_i^2")
 pf.three_line_table(doc, [["符号", "说明"], ["x", "决策变量"]])
-pf.save_document(doc, Path("<PROJECT_ROOT>"), contest="cumcm")
+pf.save_document(doc, Path("<PROJECT_ROOT>"))
 ```
 
 ## 公式
@@ -135,7 +134,7 @@ python scripts/comment.py "<PROJECT_ROOT>/unpacked" 1 "回复意见" --parent 0
 python scripts/check_env.py
 python scripts/self_check.py
 python scripts/office/validate.py "<PROJECT_ROOT>/完整论文.docx"
-python scripts/paper_format.py validate "<PROJECT_ROOT>/完整论文.docx" --contest cumcm --rendered-pages <DOCX实际渲染页数>
+python scripts/paper_format.py validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数>
 python scripts/equations.py verify-conversion "<PROJECT_ROOT>/完整论文.docx"
 ```
 

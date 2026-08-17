@@ -36,6 +36,7 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 1. 用户提供的当届官方模板和规则。
 2. 从目标竞赛官方网站取得的当届模板和规则。
 3. Word 分支以 `references/论文模板.docx` 和 `../../../tools/docx/scripts/paper_format.py` 为无官方模板时的构建基线；LaTeX 分支以 `../../../tools/latex/assets/templates/` 为构建基线。两者均不得声称替代当届官方文件。
+4. 官方规则核验只针对格式、模板、篇幅、提交要求等硬性规定，**不含评阅要点**；按本 Skill 全局盲做规则，禁止检索官方评阅要点/参考答案/赛后解析/赛后同题论文。
 
 在生成前明确竞赛名称、届次、语言和官方规则来源。官方结构、页型、页边距、摘要页、页数、编号和提交格式均以当届规则为准。
 
@@ -67,7 +68,7 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 ```powershell
 python "<SKILL_ROOT>/references/roles/innovation-special/scripts/innovation_audit.py" "<PROJECT_ROOT>/results/创新证据清单.json" --project-root "<PROJECT_ROOT>" --strict
-python "<SKILL_ROOT>/tools/docx/scripts/paper_format.py" validate "<PROJECT_ROOT>/完整论文.docx" --contest cumcm --rendered-pages <DOCX实际渲染页数>
+python "<SKILL_ROOT>/tools/docx/scripts/paper_format.py" validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数>
 python "<SKILL_ROOT>/tools/docx/scripts/office/validate.py" "<PROJECT_ROOT>/完整论文.docx"
 python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJECT_ROOT>/完整论文.docx"
 ```
@@ -77,10 +78,10 @@ python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJEC
 ```powershell
 python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" doctor --engine xelatex --bibliography-backend <none|bibtex|biber> --need-pandoc
 python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" build "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" --engine xelatex --publish "<PROJECT_ROOT>/完整论文.pdf"
-python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" --pdf "<PROJECT_ROOT>/完整论文.pdf" --contest cumcm --quality-checks --questions q1 q2 q3 --min-image-dpi 300 --max-pages <当届官方正文上限> --body-start-page <正文起始页> --appendix-start-page <附录起始页>
+python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" --pdf "<PROJECT_ROOT>/完整论文.pdf" --quality-checks --questions q1 q2 q3 --min-image-dpi 300 --max-pages <当届官方正文上限> --body-start-page <正文起始页> --appendix-start-page <附录起始页>
 ```
 
-根据目标竞赛、实际子问题和官方模板替换 `contest`、`--questions`、引擎、参考文献后端、正文起始页、附录起始页及正文页数上限；没有附录时省略 `--appendix-start-page`。复制权威代码或图表到 LaTeX 项目后，先按 LaTeX 工具说明执行 `bind`，再编译和校验。构建警告默认阻断 `完整论文.pdf` 发布；只有已核对警告才能同时提供 `--allow-warning` 与 `--override-reason`。降低默认质量目标也必须通过 `--override-reason` 记录官方条款或用户要求。任一命令退出码非零即回到论文构建步骤修正；缺少运行环境即明确报告阻塞，不得交付未通过版本。最终回复必须报告篇幅、PDF 总页数、正文页数、公式数、图数、表数、逐题正式证据覆盖、引用核验、资源/源码/PDF 哈希绑定和全部命令退出码。
+根据实际子问题和官方模板替换 `--questions`、引擎、参考文献后端、正文起始页、附录起始页及正文页数上限；没有附录时省略 `--appendix-start-page`。复制权威代码或图表到 LaTeX 项目后，先按 LaTeX 工具说明执行 `bind`，再编译和校验。构建警告默认阻断 `完整论文.pdf` 发布；只有已核对警告才能同时提供 `--allow-warning` 与 `--override-reason`。降低默认质量目标也必须通过 `--override-reason` 记录官方条款或用户要求。任一命令退出码非零即回到论文构建步骤修正；缺少运行环境即明确报告阻塞，不得交付未通过版本。最终回复必须报告篇幅、PDF 总页数、正文页数、公式数、图数、表数、逐题正式证据覆盖、引用核验、资源/源码/PDF 哈希绑定和全部命令退出码。
 
 上述命令只完成作者侧技术校验，不替代 `W2` 独立验收。
 
@@ -97,7 +98,6 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT
 | 组织与核验参考文献 | `references/文献规范.md`、`../../../tools/paper_search/SKILL.md` |
 | 评分导向自检（复杂题必做） | `references/评分导向自检.md` |
 | 创新证据与克制表达 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新证据协议.md` |
-| 英文 MCM/ICM | `references/英文化工作流.md` |
 | 交付前 | `references/自审框架.md` |
 | 阶段内独立验收 | `../../../references/Subagent调度.md` |
 

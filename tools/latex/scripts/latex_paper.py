@@ -21,7 +21,6 @@ from pathlib import Path
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1] / "assets" / "templates"
 SKILL_ROOT = Path(__file__).resolve().parents[3]
 PROJECT_MANIFEST = "latex-project.json"
-CONTESTS = {"cumcm", "mcm-icm", "generic"}
 ENGINES = {"xelatex", "lualatex", "pdflatex"}
 GRAPHIC_SUFFIXES = (".pdf", ".png", ".jpg", ".jpeg")
 UNSUPPORTED_GRAPHIC_SUFFIXES = (".svg", ".eps")
@@ -50,27 +49,11 @@ LITERAL_ENV_RE = re.compile(
 VERB_RE = re.compile(r"\\verb\*?(?P<delimiter>[^\w\s]).*?(?P=delimiter)")
 APPENDIX_RE = re.compile(r"\\appendix\b|\\begin\s*\{appendices\}")
 QUALITY_DEFAULTS = {
-    "cumcm": {
-        "min_content_units": 15_000,
-        "min_pages": 20,
-        "min_equations": 5,
-        "min_figures": 0,
-        "min_tables": 3,
-    },
-    "mcm-icm": {
-        "min_content_units": 0,
-        "min_pages": 0,
-        "min_equations": 0,
-        "min_figures": 0,
-        "min_tables": 0,
-    },
-    "generic": {
-        "min_content_units": 0,
-        "min_pages": 0,
-        "min_equations": 0,
-        "min_figures": 0,
-        "min_tables": 0,
-    },
+    "min_content_units": 15_000,
+    "min_pages": 20,
+    "min_equations": 5,
+    "min_figures": 0,
+    "min_tables": 3,
 }
 STANDARD_14_FONTS = {
     "Courier", "Courier-Bold", "Courier-Oblique", "Courier-BoldOblique",
@@ -231,21 +214,16 @@ def _entry(directory: Path, main_file: str | None = None) -> Path:
 def prepare_project(
     output_dir: Path,
     *,
-    contest: str = "cumcm",
     template_path: Path | None = None,
     main_file: str | None = None,
     template_source: str | None = None,
     template_version: str | None = None,
 ) -> dict:
     """复制官方或内置模板，并写入可追溯的项目清单。"""
-    if contest not in CONTESTS:
-        raise ValueError(f"不支持的竞赛配置：{contest}")
-    if contest == "generic" and template_path is None:
-        raise ValueError("generic 配置必须通过 --template 提供官方模板")
     output = _writable(output_dir)
     if output.exists():
         raise FileExistsError(f"输出目录已存在，拒绝覆盖：{output}")
-    source = (template_path or (TEMPLATE_ROOT / contest)).resolve()
+    source = (template_path or (TEMPLATE_ROOT / "cumcm")).resolve()
     if not source.exists():
         raise FileNotFoundError(f"LaTeX 模板不存在：{source}")
     items = [source] if source.is_file() else [source, *source.rglob("*")]
@@ -262,7 +240,6 @@ def prepare_project(
     )
     manifest = {
         "schema_version": 1,
-        "contest": contest,
         "main_tex": entry_relative,
         "template": {
             "path": str(source),
@@ -291,7 +268,6 @@ def prepare_project(
         "project_dir": str(output),
         "main_tex": str(output / Path(entry_relative)),
         "template": str(source),
-        "contest": contest,
         "manifest": str(output / PROJECT_MANIFEST),
     }
 
@@ -616,7 +592,6 @@ def _normalise_questions(questions: list[str] | tuple[str, ...] | None) -> list[
 
 
 def _thresholds(
-    contest: str,
     quality_checks: bool,
     values: dict[str, int | None],
     max_pages: int | None,
@@ -624,7 +599,7 @@ def _thresholds(
 ) -> tuple[dict[str, int], list[dict]]:
     if max_pages is not None and max_pages <= 0:
         raise ValueError("max_pages 必须为正整数")
-    defaults = QUALITY_DEFAULTS[contest] if quality_checks else {}
+    defaults = QUALITY_DEFAULTS if quality_checks else {}
     thresholds: dict[str, int] = {}
     overrides = []
     for key, explicit in values.items():
@@ -844,7 +819,6 @@ def _verify_pdf_binding(
 def inspect_paper(
     main_tex: Path,
     *,
-    contest: str = "cumcm",
     pdf_path: Path | None = None,
     quality_checks: bool = False,
     min_content_units: int | None = None,
@@ -861,8 +835,6 @@ def inspect_paper(
     override_reason: str | None = None,
 ) -> dict:
     """检查源码、引用、图表、子问题覆盖和已绑定的渲染 PDF。"""
-    if contest not in CONTESTS:
-        raise ValueError(f"不支持的竞赛配置：{contest}")
     if min_image_dpi <= 0:
         raise ValueError("min_image_dpi 必须为正整数")
     for name, value in (
@@ -881,10 +853,6 @@ def inspect_paper(
     has_appendix = bool(APPENDIX_RE.search(source))
     if appendix_start_page is not None and not has_appendix:
         raise ValueError("--appendix-start-page 只能用于包含 \\appendix 或 appendices 环境的源码")
-    if contest != "cumcm" and (
-        body_start_page is not None or appendix_start_page is not None
-    ):
-        raise ValueError("正文与附录页码参数仅适用于已核验正文上限规则的 CUMCM")
     if DANGEROUS_TEX.search(source):
         issues.append("源码包含被禁用的 TeX 文件或命令执行指令")
     if "\\begin{document}" not in source or "\\end{document}" not in source:
@@ -1026,7 +994,6 @@ def inspect_paper(
             )
 
     threshold_values, threshold_overrides = _thresholds(
-        contest,
         quality_checks,
         {
             "min_content_units": min_content_units,
@@ -1076,38 +1043,37 @@ def inspect_paper(
             rendered_pages = pdf_audit["pages"]
             page_texts = pdf_audit.pop("_page_texts", [])
             issues.extend(pdf_audit["issues"])
-            if contest == "cumcm":
-                body_start = body_start_page or 2
-                detected_appendix = (
-                    _appendix_start_page(source, page_texts) if has_appendix else None
+            body_start = body_start_page or 2
+            detected_appendix = (
+                _appendix_start_page(source, page_texts) if has_appendix else None
+            )
+            appendix_start = appendix_start_page or detected_appendix
+            body_end = appendix_start or (rendered_pages + 1)
+            if (
+                appendix_start_page is not None
+                and detected_appendix is not None
+                and appendix_start_page != detected_appendix
+            ):
+                issues.append(
+                    f"显式附录起始页 {appendix_start_page} 与 PDF 自动定位页 "
+                    f"{detected_appendix} 不一致"
                 )
-                appendix_start = appendix_start_page or detected_appendix
-                body_end = appendix_start or (rendered_pages + 1)
-                if (
-                    appendix_start_page is not None
-                    and detected_appendix is not None
-                    and appendix_start_page != detected_appendix
-                ):
-                    issues.append(
-                        f"显式附录起始页 {appendix_start_page} 与 PDF 自动定位页 "
-                        f"{detected_appendix} 不一致"
-                    )
-                if body_start > rendered_pages + 1:
-                    issues.append(
-                        f"正文起始页 {body_start} 超出 PDF 总页数 {rendered_pages}"
-                    )
-                elif body_end < body_start or body_end > rendered_pages + 1:
-                    issues.append(
-                        f"附录起始页 {body_end} 与正文起始页 {body_start}、"
-                        f"PDF 总页数 {rendered_pages} 不一致"
-                    )
-                elif has_appendix and appendix_start is None and max_pages is not None:
-                    issues.append(
-                        "无法自动定位附录起始页；请通过 --appendix-start-page "
-                        "提供附录在 PDF 中的第一页"
-                    )
-                else:
-                    body_pages = body_end - body_start
+            if body_start > rendered_pages + 1:
+                issues.append(
+                    f"正文起始页 {body_start} 超出 PDF 总页数 {rendered_pages}"
+                )
+            elif body_end < body_start or body_end > rendered_pages + 1:
+                issues.append(
+                    f"附录起始页 {body_end} 与正文起始页 {body_start}、"
+                    f"PDF 总页数 {rendered_pages} 不一致"
+                )
+            elif has_appendix and appendix_start is None and max_pages is not None:
+                issues.append(
+                    "无法自动定位附录起始页；请通过 --appendix-start-page "
+                    "提供附录在 PDF 中的第一页"
+                )
+            else:
+                body_pages = body_end - body_start
         except Exception as error:
             issues.append(f"PDF 检查失败：{error}")
     elif pdf is not None:
@@ -1144,11 +1110,8 @@ def inspect_paper(
     minimum_pages = threshold_values["min_pages"]
     if rendered_pages is not None and minimum_pages and rendered_pages < minimum_pages:
         issues.append(f"预警：实际页数 {rendered_pages}，低于质量目标 {minimum_pages}")
-    if max_pages is not None:
-        if contest == "cumcm" and body_pages is not None and body_pages > max_pages:
-            issues.append(f"正文页数 {body_pages}，超过官方上限 {max_pages}")
-        elif contest != "cumcm" and rendered_pages is not None and rendered_pages > max_pages:
-            issues.append(f"PDF 总页数 {rendered_pages}，超过官方上限 {max_pages}")
+    if max_pages is not None and body_pages is not None and body_pages > max_pages:
+        issues.append(f"正文页数 {body_pages}，超过官方上限 {max_pages}")
 
     return {
         "main_tex": str(main),
@@ -1157,7 +1120,7 @@ def inspect_paper(
         "source_sha256": source_hash,
         "rendered_pages": rendered_pages,
         "body_pages": body_pages,
-        "page_limit_scope": "body" if contest == "cumcm" else "total",
+        "page_limit_scope": "body",
         "pdf_audit": pdf_audit,
         "build_manifest": build_manifest,
         "thresholds": threshold_values,
@@ -1556,7 +1519,6 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="action", required=True)
     init = commands.add_parser("init", help="从官方或内置模板初始化 LaTeX 项目")
     init.add_argument("output_dir", type=Path)
-    init.add_argument("--contest", choices=sorted(CONTESTS), default="cumcm")
     init.add_argument("--template", type=Path)
     init.add_argument("--main", dest="main_file")
     init.add_argument("--template-source")
@@ -1579,7 +1541,6 @@ def _parser() -> argparse.ArgumentParser:
 
     validate = commands.add_parser("validate", help="校验 LaTeX 源码和编译结果")
     validate.add_argument("main_tex", type=Path)
-    validate.add_argument("--contest", choices=sorted(CONTESTS), default="cumcm")
     validate.add_argument("--pdf", type=Path)
     validate.add_argument("--quality-checks", action="store_true")
     validate.add_argument("--min-content-units", type=int)
@@ -1624,7 +1585,6 @@ def main() -> int:
         if arguments.action == "init":
             result = prepare_project(
                 arguments.output_dir,
-                contest=arguments.contest,
                 template_path=arguments.template,
                 main_file=arguments.main_file,
                 template_source=arguments.template_source,
@@ -1650,7 +1610,6 @@ def main() -> int:
         elif arguments.action == "validate":
             result = inspect_paper(
                 arguments.main_tex,
-                contest=arguments.contest,
                 pdf_path=arguments.pdf,
                 quality_checks=arguments.quality_checks,
                 min_content_units=arguments.min_content_units,

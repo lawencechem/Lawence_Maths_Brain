@@ -37,7 +37,7 @@ description: 数学建模的题目理解、模型选择和算法设计阶段。�
 | 情形 | 读取 |
 |---|---|
 | 开始分析 | `references/工作流程.md` |
-| 评阅要点前置（陌生题对靶） | `references/评阅要点前置.md`、`../../../knowledge/评阅要点库/` |
+| 题面拆解与必答清单（盲做，陌生题对靶） | `references/题面拆解与必答清单前置.md`、`../../../knowledge/盲做经验库/`（只读题面拆解与可迁移方法，不读官方/参考区间） |
 | 发现与筛选创新候选 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新发现工作流.md` |
 | 物理或几何简化 | `../innovation-special/references/物理几何简化.md` |
 | 规划求解创新 | `../innovation-special/references/求解创新路由.md` |

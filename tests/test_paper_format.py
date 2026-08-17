@@ -14,7 +14,7 @@ import paper_format as pf
 
 class PaperFormatTests(unittest.TestCase):
     def _front_matter(self):
-        doc = pf.new_document(contest="cumcm")
+        doc = pf.new_document()
         pf.title(doc, "题目")
         pf.abstract_title(doc)
         pf.body(doc, "摘要正文")
@@ -28,7 +28,7 @@ class PaperFormatTests(unittest.TestCase):
             source.add_paragraph("模板示例正文，不应进入论文")
             source.save(template)
 
-            doc = pf.new_document(contest="cumcm", template_path=template)
+            doc = pf.new_document(template_path=template)
 
         self.assertNotIn("模板示例正文", "\n".join(p.text for p in doc.paragraphs))
 
@@ -40,7 +40,6 @@ class PaperFormatTests(unittest.TestCase):
             source.save(template)
 
             doc = pf.new_document(
-                contest="cumcm",
                 template_path=template,
                 preserve_template_content=True,
             )
@@ -48,10 +47,10 @@ class PaperFormatTests(unittest.TestCase):
         self.assertIn("官方固定摘要页", "\n".join(p.text for p in doc.paragraphs))
 
     def test_cumcm_structure_validator_requires_abstract_and_keywords(self):
-        doc = pf.new_document(contest="cumcm")
+        doc = pf.new_document()
         pf.title(doc, "题目")
 
-        errors = pf.validate_paper_structure(doc, contest="cumcm")
+        errors = pf.validate_paper_structure(doc)
 
         self.assertTrue(any("摘要" in error for error in errors))
         self.assertTrue(any("关键词" in error for error in errors))
@@ -59,32 +58,18 @@ class PaperFormatTests(unittest.TestCase):
     def test_complete_cumcm_front_matter_passes(self):
         doc = self._front_matter()
 
-        errors = pf.validate_paper_structure(doc, contest="cumcm", quality_checks=False)
+        errors = pf.validate_paper_structure(doc, quality_checks=False)
 
         self.assertEqual(errors, [])
 
     def test_quality_validation_reports_length_formula_table_and_page_gaps(self):
         doc = self._front_matter()
 
-        issues = pf.validate_paper_structure(doc, contest="cumcm")
+        issues = pf.validate_paper_structure(doc)
 
         for expected in ("15000", "公式", "表", "渲染页数"):
             self.assertTrue(any(expected in issue for issue in issues), expected)
         self.assertFalse(any("仅检测到 0 幅图" in issue for issue in issues))
-
-    def test_other_contests_do_not_have_a_fixed_figure_minimum(self):
-        doc = self._front_matter()
-
-        issues = pf.validate_paper_structure(
-            doc,
-            contest="mcm-icm",
-            min_content_units=0,
-            min_equations=0,
-            min_tables=0,
-            require_rendered_pages=False,
-        )
-
-        self.assertFalse(any("幅图" in issue for issue in issues))
 
     def test_table_caption_must_be_referenced_in_body(self):
         doc = self._front_matter()
@@ -94,7 +79,6 @@ class PaperFormatTests(unittest.TestCase):
 
         issues = pf.validate_paper_structure(
             doc,
-            contest="cumcm",
             min_content_units=0,
             min_equations=0,
             min_figures=0,
@@ -113,7 +97,6 @@ class PaperFormatTests(unittest.TestCase):
 
         issues = pf.validate_paper_structure(
             doc,
-            contest="cumcm",
             min_content_units=0,
             min_equations=0,
             min_figures=0,
@@ -133,7 +116,6 @@ class PaperFormatTests(unittest.TestCase):
 
         issues = pf.validate_paper_structure(
             doc,
-            contest="cumcm",
             min_content_units=0,
             min_equations=0,
             min_figures=0,
@@ -148,7 +130,6 @@ class PaperFormatTests(unittest.TestCase):
 
         issues = pf.validate_paper_structure(
             doc,
-            contest="cumcm",
             min_content_units=0,
             min_equations=0,
             min_figures=0,
@@ -162,14 +143,14 @@ class PaperFormatTests(unittest.TestCase):
         doc = self._front_matter()
 
         with self.assertRaisesRegex(ValueError, "PROJECT_ROOT"):
-            pf.save_document(doc, pf.SKILL_ROOT, contest="cumcm")
+            pf.save_document(doc, pf.SKILL_ROOT)
 
     def test_completion_gate_rejects_incomplete_docx(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "完整论文.docx"
             self._front_matter().save(path)
 
-            report = pf.validate_document(path, contest="cumcm", rendered_pages=7)
+            report = pf.validate_document(path, rendered_pages=7)
 
         self.assertFalse(report["passed"])
         self.assertLess(report["metrics"]["content_units"], 15000)

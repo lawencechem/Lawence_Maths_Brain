@@ -7,7 +7,6 @@ import os
 import re
 import sys
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -20,7 +19,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Inches, Pt
+from docx.shared import Cm, Pt
 from lxml import etree
 
 
@@ -38,50 +37,15 @@ def set_run_font(run, font="宋体", size=12, bold=False):
     return run
 
 
-@dataclass(frozen=True)
-class ContestProfile:
-    name: str
-    paper: str
-    margins: tuple[float, float, float, float]
-    required_markers: tuple[str, ...]
-    rules_source: str
+# CUMCM 专属页面配置：A4 纸，页边距 上2.54 下2.54 左3.18 右3.18 cm（全国大学生数学建模竞赛）
+CUMCM_MARGINS = (2.54, 2.54, 3.18, 3.18)
 
 
-CONTEST_PROFILES = {
-    "cumcm": ContestProfile(
-        name="全国大学生数学建模竞赛",
-        paper="A4",
-        margins=(2.54, 2.54, 3.18, 3.18),
-        required_markers=("摘 要", "关键词："),
-        rules_source="http://www.mcm.edu.cn/",
-    ),
-    "mcm-icm": ContestProfile(
-        name="MCM/ICM",
-        paper="LETTER",
-        margins=(2.54, 2.54, 2.54, 2.54),
-        required_markers=("Summary",),
-        rules_source="https://www.comap.com/contests/mcm-icm",
-    ),
-}
-
-
-def get_profile(contest="cumcm"):
-    try:
-        return CONTEST_PROFILES[contest.lower()]
-    except KeyError as exc:
-        raise ValueError(f"未知竞赛配置: {contest}") from exc
-
-
-def setup_page(doc, contest="cumcm"):
-    profile = get_profile(contest)
+def setup_page(doc):
     section = doc.sections[0]
-    if profile.paper == "LETTER":
-        section.page_width = Inches(8.5)
-        section.page_height = Inches(11)
-    else:
-        section.page_width = Cm(21)
-        section.page_height = Cm(29.7)
-    top, bottom, left, right = profile.margins
+    section.page_width = Cm(21)
+    section.page_height = Cm(29.7)
+    top, bottom, left, right = CUMCM_MARGINS
     section.top_margin = Cm(top)
     section.bottom_margin = Cm(bottom)
     section.left_margin = Cm(left)
@@ -268,7 +232,7 @@ def _clear_template_body(doc):
             body_element.remove(child)
 
 
-def new_document(contest="cumcm", template_path=None, preserve_template_content=False):
+def new_document(template_path=None, preserve_template_content=False):
     """从空白文档或参考模板创建论文，可保留官方模板的固定正文。"""
     doc = Document(str(template_path)) if template_path else Document()
     if template_path and not preserve_template_content:
@@ -277,7 +241,7 @@ def new_document(contest="cumcm", template_path=None, preserve_template_content=
     if zoom is not None and zoom.get(qn("w:percent")) is None:
         zoom.set(qn("w:percent"), "100")
     if not template_path:
-        setup_page(doc, contest)
+        setup_page(doc)
     return doc
 
 
@@ -354,7 +318,6 @@ def _reference_issues(paragraphs):
 
 def validate_paper_structure(
     doc,
-    contest="cumcm",
     *,
     quality_checks=True,
     min_content_units=None,
@@ -367,39 +330,27 @@ def validate_paper_structure(
     require_rendered_pages=True,
 ):
     """检查官方结构、篇幅目标、公式图表、编号引用和参考文献对应关系。"""
-    profile = get_profile(contest)
     texts = [paragraph.text.strip() for paragraph in doc.paragraphs if paragraph.text.strip()]
     errors = []
     if not texts:
         errors.append("缺少论文标题")
     full_text = "\n".join(texts)
-    for marker in profile.required_markers:
-        if marker == "Summary":
-            present = any(text.lower() in {"summary", "summary sheet"} for text in texts)
-        elif marker.endswith("："):
-            present = any(text.startswith(marker) for text in texts)
-        else:
-            present = marker in texts
+    for marker in ("摘 要", "关键词："):
+        present = any(text.startswith(marker) for text in texts) if marker.endswith("：") else marker in texts
         if not present:
-            label = "摘要" if marker == "摘 要" else "关键词" if marker == "关键词：" else marker
+            label = "摘要" if marker == "摘 要" else "关键词"
             errors.append(f"缺少官方结构项: {label}")
     if "[待补充" in full_text:
         errors.append("论文仍含 [待补充] 占位符")
     if not quality_checks:
         return errors
 
-    if contest.lower() == "cumcm":
-        min_content_units = 15000 if min_content_units is None else min_content_units
-        min_equations = 5 if min_equations is None else min_equations
-        min_figures = 0 if min_figures is None else min_figures
-        min_tables = 3 if min_tables is None else min_tables
-        target_pages = 20 if target_pages is None else target_pages
-        official_max_pages = 30 if official_max_pages is None else official_max_pages
-    else:
-        min_content_units = 0 if min_content_units is None else min_content_units
-        min_equations = 0 if min_equations is None else min_equations
-        min_figures = 0 if min_figures is None else min_figures
-        min_tables = 0 if min_tables is None else min_tables
+    min_content_units = 15000 if min_content_units is None else min_content_units
+    min_equations = 5 if min_equations is None else min_equations
+    min_figures = 0 if min_figures is None else min_figures
+    min_tables = 3 if min_tables is None else min_tables
+    target_pages = 20 if target_pages is None else target_pages
+    official_max_pages = 30 if official_max_pages is None else official_max_pages
 
     all_text = "\n".join(_document_texts(doc))
     units = _content_units(all_text)
@@ -448,7 +399,7 @@ def _is_within(path, parent):
         return False
 
 
-def save_document(doc, project_root, filename="完整论文.docx", contest="cumcm", overwrite=False):
+def save_document(doc, project_root, filename="完整论文.docx", overwrite=False):
     """校验后原子保存到 PROJECT_ROOT，并拒绝写入 Skill 目录。"""
     project = Path(project_root).resolve()
     if _is_within(project, SKILL_ROOT):
@@ -458,7 +409,7 @@ def save_document(doc, project_root, filename="完整论文.docx", contest="cumc
         raise ValueError("论文输出必须位于 PROJECT_ROOT 内部")
     if _is_within(output, SKILL_ROOT):
         raise ValueError("论文输出不能位于 SKILL_ROOT 内部")
-    issues = validate_paper_structure(doc, contest)
+    issues = validate_paper_structure(doc)
     errors = [issue for issue in issues if not issue.startswith("预警：")]
     if errors:
         raise ValueError("论文结构校验失败: " + "；".join(errors))
@@ -471,7 +422,7 @@ def save_document(doc, project_root, filename="完整论文.docx", contest="cumc
     return output
 
 
-def validate_document(path, *, contest="cumcm", rendered_pages=None):
+def validate_document(path, *, rendered_pages=None):
     """校验现有 DOCX，并返回可供完成门禁使用的结构化结果。"""
     source = Path(path).resolve()
     if not source.is_file() or source.suffix.casefold() != ".docx":
@@ -479,7 +430,6 @@ def validate_document(path, *, contest="cumcm", rendered_pages=None):
     doc = Document(source)
     issues = validate_paper_structure(
         doc,
-        contest,
         quality_checks=True,
         rendered_pages=rendered_pages,
         require_rendered_pages=True,
@@ -504,12 +454,10 @@ def main():
     commands = parser.add_subparsers(dest="action", required=True)
     validate = commands.add_parser("validate", help="执行 DOCX 完成门禁")
     validate.add_argument("path", type=Path)
-    validate.add_argument("--contest", choices=sorted(CONTEST_PROFILES), default="cumcm")
     validate.add_argument("--rendered-pages", type=int, required=True)
     arguments = parser.parse_args()
     result = validate_document(
         arguments.path,
-        contest=arguments.contest,
         rendered_pages=arguments.rendered_pages,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))

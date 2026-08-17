@@ -40,7 +40,7 @@ python scripts/hybrid_scholar.py --query "analytic hierarchy process" --limit 8
 ## 中文核心期刊检索（CUMCM 等国内竞赛重点，中文核心优先）
 
 先查中文核心（北大核心/CSCD/EI：《红外与激光工程》《兵工学报》《电光与控制》《控制与决策》等），
-再补国际文献；低质 OA 同题刊仅数值对照。详见 `../../references/roles/论文手/references/文献规范.md`。
+再补国际文献；低质 OA 同题刊仅数值对照。按全局盲做规则，检索仅用于获取竞赛年及更早的文献依据，**不用于获取官方评阅要点/参考答案/赛后解析/赛后同题论文**。详见 `../../references/roles/论文手/references/文献规范.md`。
 
 OpenAlex/AnySearch 对国内核心期刊收录与 DOI 覆盖不完整，按命中分级：
 

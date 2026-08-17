@@ -43,10 +43,10 @@
 
 ## 配色 & 色盲
 
-- [ ] 固定国奖品牌四色 `cumcm_theme.PALETTE`，**避免红绿对比**
+- [ ] 离散系列用 Okabe-Ito 8 色（`cumcm_theme.OKABE_ITO`），**避免红绿对比**
 - [ ] 不同类别**双重编码**：不同颜色 + 不同线型 / marker
 - [ ] 导出灰度预览（`export_figure(grayscale_preview=True)`），灰度下仍能区分
-- [ ] 热力图用命名色图 `cumcm_diverging` / `cumcm_sequential`，**不用** viridis / magma / inferno / cividis / RdBu_r / rainbow / jet（原生色图被主题一票否决）
+- [ ] 热力图用**感知均匀**色图（viridis / magma / inferno / cividis / RdBu_r / `cumcm_diverging` / `cumcm_sequential`），**不用** jet / rainbow / turbo
 - [ ] 双向数据用发散色图 + `center=0`
 
 ## 坐标轴 & 标签

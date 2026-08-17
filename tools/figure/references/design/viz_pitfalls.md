@@ -238,7 +238,7 @@ sns.stripplot(data=df, x='group', y='value', color='black',
 - 色盲读者看你的图是两条**完全分不开**的灰线
 
 **正确做法**：
-1. 用国奖品牌四色 `cumcm_theme.PALETTE`（固定主题，见 `design_theory.md` §13）
+1. 离散系列用 Okabe-Ito 8 色 `cumcm_theme.OKABE_ITO`，连续热力图用 viridis/magma 等感知均匀色图（固定主题，见 `design_theory.md` §13）
 2. 不同类别**加冗余编码**：颜色 + 线型 / marker
 3. `export_figure(..., grayscale_preview=True)` 自动生成灰度版本
 4. 灰度下能否区分？不能 → 加 marker / 改线型

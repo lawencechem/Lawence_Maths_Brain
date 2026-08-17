@@ -147,7 +147,7 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0
         4. 文字块互相重叠（WARN）—— 任意两个非刻度文字块包围盒相交；
            刻度-刻度字对由第 3 项覆盖，不重复上报。
         5. 主题合规（固定启用）—— 调用 cumcm_theme.validate_theme_compliance：
-           刻度上限 / 禁用原生色图 / 色板白名单 / 网格样式。
+           刻度上限 / 禁用 jet-rainbow 等有害色图（viridis/magma 放行） / 色板白名单 / 网格样式。
 
     非破坏性：只渲染测量，不修改 fig 内容。
     """

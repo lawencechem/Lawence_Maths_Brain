@@ -1,7 +1,8 @@
 """国奖主题 cumcm_theme 的合规检查测试。
 
-覆盖四个硬坑中的可测项：刻度上限、禁用原生色图、色板白名单、axis-off 跳过刻度检查，
-以及 setup_style() 固定应用国奖主题 / visual_qa.audit_layout() 固定启用主题合规。
+覆盖四个硬坑中的可测项：刻度上限、禁用有害色图（jet/rainbow 等，viridis/magma 放行）、
+色板白名单（含 Okabe-Ito 8 色）、axis-off 跳过刻度检查，以及 setup_style() 固定应用
+国奖主题 / visual_qa.audit_layout() 固定启用主题合规。
 """
 import sys
 import unittest
@@ -36,6 +37,7 @@ class ThemeConstantsTests(unittest.TestCase):
         # 浅底衍生色必须被合规白名单接受（硬坑 3）
         from matplotlib.colors import to_hex
         allowed = {to_hex(v, keep_alpha=False).lower() for v in cumcm_theme.PALETTE.values()} \
+            | {to_hex(c, keep_alpha=False).lower() for c in cumcm_theme.OKABE_ITO} \
             | cumcm_theme.ALLOWED_NEUTRALS \
             | {to_hex(v, keep_alpha=False).lower() for v in cumcm_theme.TINTS.values()}
         self.assertIn(to_hex(cumcm_theme.TINTS["primary_tint"], keep_alpha=False).lower(), allowed)
@@ -69,11 +71,37 @@ class ValidateThemeTests(unittest.TestCase):
         self.assertTrue(any("刻度" in msg for _, msg in issues))
         self.assertEqual(_severities(issues), {"WARN"})
 
-    def test_forbidden_native_cmap_is_fail(self):
+    def test_forbidden_cmap_is_fail(self):
+        # 只禁真有害色图：jet / rainbow / hsv / turbo 等
+        for cmap in ("jet", "rainbow", "hsv", "turbo"):
+            with self.subTest(cmap=cmap):
+                fig, ax = plt.subplots()
+                ax.imshow(np.zeros((4, 4)), cmap=cmap)
+                issues = cumcm_theme.validate_theme_compliance(fig)
+                self.assertTrue(
+                    any(sev == "FAIL" and "禁用的有害色图" in msg for sev, msg in issues),
+                    f"{cmap} 应被判为 FAIL：{issues}",
+                )
+
+    def test_perceptually_uniform_cmaps_allowed(self):
+        # 国赛实践：viridis/magma/RdBu_r 等感知均匀色图放行（连续热力图标准用色）
+        for cmap in ("viridis", "magma", "plasma", "inferno", "cividis", "RdBu_r"):
+            with self.subTest(cmap=cmap):
+                fig, ax = plt.subplots()
+                ax.imshow(np.zeros((4, 4)), cmap=cmap)
+                issues = cumcm_theme.validate_theme_compliance(fig)
+                self.assertFalse(
+                    any(sev == "FAIL" for sev, _ in issues),
+                    f"{cmap} 不应被判为 FAIL：{issues}",
+                )
+
+    def test_okabe_ito_line_color_is_allowed(self):
+        # 离散多系列对比线图默认用 Okabe-Ito，必须在白名单内
         fig, ax = plt.subplots()
-        ax.imshow(np.zeros((4, 4)), cmap="viridis")
+        ax.plot([0, 1], [0, 1], color=cumcm_theme.OKABE_ITO[1])
+        ax.plot([0, 1], [0, 2], color=cumcm_theme.OKABE_ITO[6], ls="--")
         issues = cumcm_theme.validate_theme_compliance(fig)
-        self.assertTrue(any(sev == "FAIL" and "原生默认色图" in msg for sev, msg in issues))
+        self.assertFalse(any("白名单" in msg for _, msg in issues), issues)
 
     def test_non_whitelist_color_is_warn(self):
         fig, ax = plt.subplots()

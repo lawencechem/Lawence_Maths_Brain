@@ -282,7 +282,7 @@ def setup_style(
     Returns:
         dict 包含 keys: journal / lang / sciplots_used / cjk_font /
         constrained_layout / theme / palette。主题固定为国奖评阅审美
-        'cumcm'（品牌四色 + 手动刻度 + 中文宋体/Times 混排，定义见同目录
+        'cumcm'（离散 Okabe-Ito + 连续 viridis/magma 等感知均匀色图 + 手动刻度 + 中文宋体/Times 混排，定义见同目录
         cumcm_theme.py），不再提供 theme 切换。
     """
     if journal not in JOURNAL_PRESETS:

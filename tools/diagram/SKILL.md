@@ -84,10 +84,10 @@ final_size：最终宽高
 
 ### 第 4 步：绘制与统一样式
 
-- 优先复用 `../figure/scripts/style_constants.py` 的语义颜色与字体逻辑；国赛统一品牌四色时用
-  `../figure/scripts/cumcm_theme.py`（国奖主题：`PALETTE`/`TINTS`/`apply()`/`validate_theme_compliance()`）。
+- 优先复用 `../figure/scripts/style_constants.py` 的语义颜色与字体逻辑；国赛统一主题时用
+  `../figure/scripts/cumcm_theme.py`（国奖主题：`OKABE_ITO`/`PALETTE`/`TINTS`/`apply()`/`validate_theme_compliance()`）。
 - 无项目配色时使用低饱和回退：主色 `#2E5EAA`、辅色 `#C84630`、强调色 `#E08E45`、基准灰 `#7A7A7A`（即
-  `cumcm_theme.PALETTE`）。数据图与示意图必须同源——主题固定为 `cumcm`（无 theme 参数切换），两套图共用同一色板，避免论文两套色系。
+  `cumcm_theme.PALETTE`）。数据图与示意图必须同源——主题固定为 `cumcm`（无 theme 参数切换），两套图共用同一色板（离散系列默认 `OKABE_ITO`），避免论文两套色系。
 - 西文优先 Times New Roman，中文优先 SimSun；缺失时按 SimHei、Microsoft YaHei 和可用中文字体回退。绘制前用 `matplotlib.font_manager` 实际检查字体；主题模式下直接调 `cumcm_theme.apply()`（具体字体列表进 `font.family`，见 `design_theory.md` §13 硬坑 1）。
 - 同一物理量、模块或路径跨图保持相同颜色、线型和符号。颜色不是唯一编码，必要时增加线型、边框或标记。
 - 关键路径加深，次要路径降低饱和度；不使用渐变阴影、立体方框、装饰图标或默认彩虹色。

@@ -3,12 +3,16 @@ scipilot-figure-skill :: cumcm_theme.py
 =======================================
 国奖评阅审美的参数化主题预设（数据图与示意图共用）。
 
-把「人工调试质感」转成程序可查项：
-- 品牌四色 + 手动写死的衍生浅底（TINTS），同一物理量跨图同色；
-- 注册命名 colormap（hex 锚点），不裸用 matplotlib 内置色图；
-- 全手动参数（刻度上限 x≤8 / y≤6、线宽、网格样式）写死；
+把「国赛评阅审美」转成程序可查项：
+- 离散工作色板 = Okabe-Ito 8 色（色盲安全、黑白可分，多方案对比线图默认）；
+  品牌语义四色（PALETTE）与手动写死的衍生浅底（TINTS）用于同物理量跨图同色和
+  示意图节点，全部在白名单内；
+- 连续色图放行感知均匀的 viridis/plasma/inferno/magma/cividis/RdBu_r 等，
+  只禁 jet/rainbow/hsv/turbo 等有害色图；另注册命名色图 cumcm_diverging /
+  cumcm_sequential 供品牌化选择；
+- 全手动参数（刻度上限 x≤8 / y≤6、线宽、网格样式、宋体/Times 混排）写死；
 - validate_theme_compliance() 把规则量化为 [(severity, msg), ...]，
-  供 visual_qa.audit_layout 以可选主题检查接入。
+  供 visual_qa.audit_layout 固定检查接入。
 
 用法
 ----
@@ -32,7 +36,7 @@ setup_style() 固定应用本主题（唯一主题，无 theme 参数切换）�
 """
 from __future__ import annotations
 
-from matplotlib import rcParams, colormaps
+from matplotlib import cycler, rcParams, colormaps
 from matplotlib.colors import LinearSegmentedColormap, to_hex
 
 # ---------------------------------------------------------------------------
@@ -55,6 +59,11 @@ TINTS = {
     "secondary_dark": "#A62C1A",   # 辅色深（与 diverging 锚点一致）
 }
 
+# 国赛离散工作色板：Okabe-Ito 8 色（色盲安全、黑白打印可分，国际期刊与国奖论文
+# 高频使用）。多方案对比线图（OC 曲线、SPRT-ASN 对比等）默认用色；须在白名单内。
+OKABE_ITO = ["#000000", "#E69F00", "#56B4E9", "#009E73",
+             "#F0E442", "#0072B2", "#D55E00", "#CC79A7"]
+
 # 白名单：允许非品牌色的中性色（文本、轴、网格、极浅填充、透明）
 ALLOWED_NEUTRALS = {
     "#000000", "#FFFFFF", "#333333", "#444444", "#666666",
@@ -65,12 +74,12 @@ ALLOWED_NEUTRALS = {
 # 刻度上限（国奖审美：手动刻度 x≤8 / y≤6）
 TICK_LIMITS = {"x": 8, "y": 6}
 
-# 禁用的 matplotlib 原生默认色图（native colormap 一票否决）
+# 禁用的有害色图（感知不均匀或误导，native colormap 一票否决）。
+# viridis/plasma/inferno/magma/cividis、RdBu_r、coolwarm、YlGnBu/Blues 等
+# 感知均匀的顺序/发散色图全部放行（国赛热力图标准用 viridis/magma）。
 FORBIDDEN_CMAPS = {
-    "viridis", "plasma", "inferno", "magma", "cividis", "jet", "rainbow",
-    "hsv", "YlGnBu", "YlOrRd", "YlOrBr", "YlGn", "GnBu", "RdYlGn", "RdYlBu",
-    "Blues", "Reds", "Greens", "Purples", "Oranges", "coolwarm", "seismic",
-    "twilight", "turbo", "gist_rainbow", "brg", "gnuplot", "CMRmap",
+    "jet", "rainbow", "hsv", "turbo", "gist_rainbow", "brg",
+    "gnuplot", "CMRmap", "twilight",
 }
 
 # 注册命名 colormap（hex 锚点，非 matplotlib 内置）
@@ -121,6 +130,7 @@ RC = {
     "savefig.bbox": "tight",
     "legend.frameon": False,
     "legend.fontsize": 8,
+    "axes.prop_cycle": cycler(color=OKABE_ITO),   # 多系列自动轮换 Okabe-Ito（色盲安全）
 }
 
 # 与 visual_qa / check_figure 一致的 severity 序
@@ -150,16 +160,18 @@ def validate_theme_compliance(fig) -> list[tuple[str, str]]:
     检查项：
       - 轴关闭（拓扑图/示意图）→ 跳过刻度上限检查；
       - 刻度上限 x≤8 / y≤6（WARN，密度偏好）；
-      - 禁止原生色图（FAIL，viridis/turbo/YlGnBu…一票否决）；
-      - 非白名单颜色（WARN，含衍生浅底需进 TINTS）；
+      - 禁止有害色图（FAIL，jet/rainbow/hsv/turbo…一票否决；
+        viridis/magma/RdBu_r 等感知均匀色图放行）；
+      - 非白名单颜色（WARN，离散色优先 OKABE_ITO，衍生浅底需进 TINTS）；
       - 网格仅横向浅灰虚线（WARN）。
 
     只报告，不抛异常；调用方（如 visual_qa.audit_layout）决定是否 hard fail。
     """
     issues: list[tuple[str, str]] = []
     pal_hex = {to_hex(v, keep_alpha=False).lower() for v in PALETTE.values()}
-    allowed = pal_hex | ALLOWED_NEUTRALS | {to_hex(v, keep_alpha=False).lower()
-                                            for v in TINTS.values()}
+    okabe_hex = {to_hex(c, keep_alpha=False).lower() for c in OKABE_ITO}
+    allowed = pal_hex | okabe_hex | ALLOWED_NEUTRALS | \
+        {to_hex(v, keep_alpha=False).lower() for v in TINTS.values()}
 
     for idx, ax in enumerate(fig.axes):
         # 硬坑 2：mpl 3.11 中 axis('off') 置 axison=False，不翻转 xaxis.get_visible()
@@ -187,8 +199,9 @@ def validate_theme_compliance(fig) -> list[tuple[str, str]]:
             if cmap_name in FORBIDDEN_CMAPS:
                 issues.append((
                     "FAIL",
-                    f"ax{idx} 使用原生默认色图 {cmap_name}，"
-                    "改用手动构造的 cumcm_diverging / cumcm_sequential。",
+                    f"ax{idx} 使用禁用的有害色图 {cmap_name}"
+                    "（jet/rainbow/hsv/turbo 等），改用 viridis/magma/RdBu_r"
+                    "等感知均匀色图或 cumcm_diverging / cumcm_sequential。",
                 ))
 
         for line in ax.lines:
@@ -196,8 +209,8 @@ def validate_theme_compliance(fig) -> list[tuple[str, str]]:
             if c and c not in allowed:
                 issues.append((
                     "WARN",
-                    f"ax{idx} 线条颜色 {c} 不在国奖主题白名单。"
-                    "改用 PALETTE / TINTS / ALLOWED_NEUTRALS。",
+                    f"ax{idx} 线条颜色 {c} 不在国赛主题白名单。"
+                    "离散系列改用 OKABE_ITO / PALETTE / ALLOWED_NEUTRALS。",
                 ))
 
         for patch in ax.patches:
@@ -205,7 +218,7 @@ def validate_theme_compliance(fig) -> list[tuple[str, str]]:
             if c and c not in allowed:
                 issues.append((
                     "WARN",
-                    f"ax{idx} 色块颜色 {c} 不在国奖主题白名单。"
+                    f"ax{idx} 色块颜色 {c} 不在国赛主题白名单。"
                     "浅底/深描边请用 TINTS 中的写死值。",
                 ))
 
@@ -239,7 +252,7 @@ def issues_verdict(issues: list[tuple[str, str]]) -> str:
 
 
 __all__ = [
-    "ALLOWED_NEUTRALS", "DIVERGING_ANCHORS", "FORBIDDEN_CMAPS", "PALETTE",
-    "RC", "SEQUENTIAL_ANCHORS", "TICK_LIMITS", "TINTS", "apply",
+    "ALLOWED_NEUTRALS", "DIVERGING_ANCHORS", "FORBIDDEN_CMAPS", "OKABE_ITO",
+    "PALETTE", "RC", "SEQUENTIAL_ANCHORS", "TICK_LIMITS", "TINTS", "apply",
     "issues_verdict", "validate_theme_compliance",
 ]

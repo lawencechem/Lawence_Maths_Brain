@@ -31,16 +31,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cumcm_theme  # 国奖品牌四色（唯一主题）
+import cumcm_theme  # 国赛主题（固定唯一主题）
 
 # 一次性设好样式（主题固定为国奖 cumcm，无 theme 参数）
 setup_style(journal='general', lang='zh')
 
-# 品牌四色：同一物理量跨图同色，须在 cumcm 主题白名单内
-BRAND = [cumcm_theme.PALETTE["primary"], cumcm_theme.PALETTE["primary"],
-         cumcm_theme.PALETTE["primary"], cumcm_theme.PALETTE["accent"],
-         cumcm_theme.PALETTE["gray"], cumcm_theme.PALETTE["secondary"],
-         cumcm_theme.PALETTE["secondary"], cumcm_theme.PALETTE["gray"]]
+# 国赛离散工作色板：同一物理量跨图同色，须在 cumcm 主题白名单内
+OKABE = cumcm_theme.OKABE_ITO  # Okabe-Ito 8 色（色盲安全、黑白可分）
 ```
 
 ---
@@ -68,9 +65,9 @@ y2_mean, y2_sem = y2_samples.mean(1), y2_samples.std(1, ddof=1) / np.sqrt(n)
 
 fig, ax = plt.subplots(figsize=(3.5, 2.625))
 lineplot_with_band(ax, x, y1_mean, y1_sem, 'Condition A',
-                   color=BRAND[2], ls='-')
+                   color=OKABE[2], ls='-')
 lineplot_with_band(ax, x, y2_mean, y2_sem, 'Condition B',
-                   color=BRAND[6], ls='--')   # 第二条用虚线 -> 黑白可读
+                   color=OKABE[6], ls='--')   # 第二条用虚线 -> 黑白可读
 ax.set_xlabel('Time (s)')
 ax.set_ylabel('Response (a.u.)')
 ax.legend(frameon=False, loc='lower right')
@@ -109,7 +106,7 @@ data = pd.DataFrame({
 fig, ax = plt.subplots(figsize=(3.5, 2.625))
 sns.barplot(
     data=data, x='group', y='value', hue='condition',
-    palette=[BRAND[2], BRAND[6]],
+    palette=[OKABE[2], OKABE[6]],
     errorbar='se',          # 'sd' | 'se' | ('ci', 95) | None
     capsize=0.15,
     err_kws={'linewidth': 0.8},
@@ -118,7 +115,7 @@ sns.barplot(
 # 叠加原始点显示数据分布——审稿人喜欢看分布而非只看均值
 sns.stripplot(
     data=data, x='group', y='value', hue='condition',
-    palette=[BRAND[2], BRAND[6]],
+    palette=[OKABE[2], OKABE[6]],
     dodge=True, size=2, alpha=0.6, edgecolor='black', linewidth=0.3,
     ax=ax, legend=False,
 )
@@ -155,19 +152,19 @@ fig, ax = plt.subplots(figsize=(3.5, 3.0))
 sns.scatterplot(
     data=df, x='x', y='y',
     hue='group', style='group',     # 颜色 + marker 形状双重编码
-    palette=[BRAND[2], BRAND[6]],
+    palette=[OKABE[2], OKABE[6]],
     s=25, alpha=0.85, edgecolor='black', linewidth=0.3,
     ax=ax,
 )
 # 分组回归线 + 95% CI
 sns.regplot(data=df[df.group=='A'], x='x', y='y',
-            scatter=False, color=BRAND[2], line_kws={'lw': 1.0}, ax=ax)
+            scatter=False, color=OKABE[2], line_kws={'lw': 1.0}, ax=ax)
 sns.regplot(data=df[df.group=='B'], x='x', y='y',
-            scatter=False, color=BRAND[6], line_kws={'lw': 1.0}, ax=ax)
+            scatter=False, color=OKABE[6], line_kws={'lw': 1.0}, ax=ax)
 
 # 在图里标 Pearson r 和 p
 from scipy.stats import pearsonr
-for g, c in zip(['A', 'B'], [BRAND[2], BRAND[6]]):
+for g, c in zip(['A', 'B'], [OKABE[2], OKABE[6]]):
     sub = df[df.group == g]
     r, p = pearsonr(sub.x, sub.y)
     ax.text(0.05 if g=='A' else 0.05, 0.95 if g=='A' else 0.88,
@@ -197,7 +194,7 @@ export_figure(fig, 'figs/03_scatter', formats=['pdf', 'svg', 'png'],
 fig, ax = plt.subplots(figsize=(3.5, 2.625))
 sns.boxplot(
     data=data, x='group', y='value', hue='condition',
-    palette=[BRAND[2], BRAND[6]],
+    palette=[OKABE[2], OKABE[6]],
     showfliers=False,        # 不画异常点，由 stripplot 显示全部点
     width=0.6,
     linewidth=0.8,
@@ -205,7 +202,7 @@ sns.boxplot(
 )
 sns.stripplot(
     data=data, x='group', y='value', hue='condition',
-    palette=[BRAND[2], BRAND[6]],
+    palette=[OKABE[2], OKABE[6]],
     dodge=True, size=2.5, alpha=0.6,
     edgecolor='black', linewidth=0.3,
     ax=ax, legend=False,
@@ -299,7 +296,7 @@ fig, ax = plt.subplots(figsize=(3.5, 2.625))
 ax.errorbar(
     doses, mean, yerr=sem,
     fmt='o',                  # marker
-    color=BRAND[2], ecolor=BRAND[2],
+    color=OKABE[2], ecolor=OKABE[2],
     elinewidth=0.8, capsize=2, capthick=0.8,
     markersize=5, markeredgecolor='black', markeredgewidth=0.4,
     label='Compound X',
@@ -337,10 +334,10 @@ fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.8), constrained_layout=True)
 # === 直方图 + KDE 叠加 ===
 ax = axes[0]
 ax.hist(data1, bins=30, density=True, alpha=0.55,
-        color=BRAND[2], edgecolor='black', linewidth=0.4,
+        color=OKABE[2], edgecolor='black', linewidth=0.4,
         label='Histogram')
 # KDE 用 seaborn 直接画在同一 ax
-sns.kdeplot(data1, ax=ax, color=BRAND[6], linewidth=1.2, label='KDE')
+sns.kdeplot(data1, ax=ax, color=OKABE[6], linewidth=1.2, label='KDE')
 # 在底部加 rug 显示每个原始点
 sns.rugplot(data1, ax=ax, color='black', height=0.04, alpha=0.4)
 ax.set_xlabel('Value'); ax.set_ylabel('Density')
@@ -350,8 +347,8 @@ ax.legend(frameon=False, fontsize=6)
 # === 偏态分布 + 中位数 vs 均值 ===
 ax = axes[1]
 ax.hist(data2, bins=30, density=True, alpha=0.55,
-        color=BRAND[3], edgecolor='black', linewidth=0.4)
-sns.kdeplot(data2, ax=ax, color=BRAND[6], linewidth=1.2)
+        color=OKABE[3], edgecolor='black', linewidth=0.4)
+sns.kdeplot(data2, ax=ax, color=OKABE[6], linewidth=1.2)
 ax.axvline(data2.mean(), color='red', linestyle='--', linewidth=0.8,
            label=f'mean={data2.mean():.2f}')
 ax.axvline(np.median(data2), color='black', linestyle=':', linewidth=0.8,
@@ -423,7 +420,7 @@ df_sub['group'] = rng.choice(['Ctrl', 'Treat'], n)
 
 g = sns.pairplot(
     df_sub, hue='group',
-    palette={'Ctrl': BRAND[2], 'Treat': BRAND[6]},
+    palette={'Ctrl': OKABE[2], 'Treat': OKABE[6]},
     plot_kws=dict(s=10, alpha=0.6, edgecolor='black', linewidth=0.2),
     diag_kws=dict(linewidth=0.8),
     height=1.4,           # 每个子图英寸数；总尺寸 ≈ height × n_cols
@@ -461,22 +458,22 @@ fig, axes = plt.subplots(
 # === 子图 a：折线 ===
 ax = axes[0, 0]
 x = np.linspace(0, 10, 50)
-ax.plot(x, np.sin(x), color=BRAND[2], label='A')
-ax.plot(x, np.cos(x), color=BRAND[6], linestyle='--', label='B')
+ax.plot(x, np.sin(x), color=OKABE[2], label='A')
+ax.plot(x, np.cos(x), color=OKABE[6], linestyle='--', label='B')
 ax.set_xlabel('Time (s)'); ax.set_ylabel('Signal')
 ax.legend(frameon=False, fontsize=6)
 
 # === 子图 b：散点 ===
 ax = axes[0, 1]
 ax.scatter(rng.normal(0,1,50), rng.normal(0,1,50),
-           c=BRAND[3], s=12, edgecolor='black', linewidth=0.3)
+           c=OKABE[3], s=12, edgecolor='black', linewidth=0.3)
 ax.set_xlabel('PC1'); ax.set_ylabel('PC2')
 
 # === 子图 c：柱状 ===
 ax = axes[1, 0]
 vals = [3.2, 4.5, 2.8]; errs = [0.3, 0.2, 0.4]
 ax.bar(['G1','G2','G3'], vals, yerr=errs, capsize=2,
-       color=[BRAND[2], BRAND[6], BRAND[3]], edgecolor='black', linewidth=0.5)
+       color=[OKABE[2], OKABE[6], OKABE[3]], edgecolor='black', linewidth=0.5)
 ax.set_ylabel('Score')
 
 # === 子图 d：箱线 ===
@@ -484,7 +481,7 @@ ax = axes[1, 1]
 data_box = [rng.normal(loc, 1, 30) for loc in [0, 0.7, 1.4]]
 ax.boxplot(data_box, tick_labels=['G1','G2','G3'],
            patch_artist=True, widths=0.5,
-           boxprops=dict(facecolor=BRAND[2], alpha=0.6, linewidth=0.6),
+           boxprops=dict(facecolor=OKABE[2], alpha=0.6, linewidth=0.6),
            medianprops=dict(color='black', linewidth=1.0),
            flierprops=dict(marker='o', markersize=2))
 ax.set_ylabel('Value')

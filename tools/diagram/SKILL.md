@@ -24,6 +24,7 @@ description: 为数学建模论文生成可复现的机理图、二维或三维�
 | NetworkX | 3.6.1 | 离散图的节点、边、DAG、层级和路径关系 |
 | NumPy | 2.5.1 | 坐标、曲线、网格和几何计算 |
 | GeoGebra Classic 5 | 5.4.920.0 | 连续二维/三维几何构造、交互调整和高分辨率导出 |
+| Mermaid CLI（可选） | mmdc 或 `npx @mermaid-js/mermaid-cli` | 复杂判定/算法流程图的渲染；缺失时交付 `.mmd` 源码与渲染说明 |
 
 运行前执行：
 
@@ -33,14 +34,15 @@ python "<SKILL_ROOT>/tools/diagram/scripts/check_env.py"
 
 本轮必须自动生成 GeoGebra 图片时加 `--require-geogebra`；仅输出逐行指令时不加。
 
-记录实际版本，不要求运行环境与验证基线逐补丁版本相同。缺少 Matplotlib、NetworkX 或 NumPy 时明确报告；几何任务优先探测 GeoGebra Classic，缺失或无法自动调用时仍生成逐行指令和人工生成说明，不改用 Mermaid 或 MATLAB。
+记录实际版本，不要求运行环境与验证基线逐补丁版本相同。缺少 Matplotlib、NetworkX 或 NumPy 时明确报告；几何任务优先探测 GeoGebra Classic，缺失或无法自动调用时仍生成逐行指令和人工生成说明，几何机理图不落入 Mermaid 或 MATLAB。复杂判定/算法流程图优先使用 Mermaid，其渲染失败时交付 `.mmd` 源码与渲染说明。
 
 ## 单轨工具策略
 
 - 流程、架构和拓扑图：NetworkX 建立离散结构，Matplotlib 手动绘制节点形状、连接线、箭头、标签和图例。
+- **复杂判定/算法流程图**（判定树、多分支判据、相位提取算法流程等逻辑难以用文字说清的）：优先使用 **Mermaid** 表达，以 `.mmd` 源码为可编辑交付物；渲染失败时交付源码 + 渲染说明并标记 `PENDING_RENDER`，不伪造完成状态。
 - 连续二维/三维几何：优先用 GeoGebra Classic 按“建系、定点、连线、成域/成体、标注、锁视角、导出”顺序构造；Matplotlib `patches`、坐标变换和 `mplot3d` 是可自动渲染的后备。
 - 组合图：使用 Matplotlib `GridSpec` 把示意图与同一论点的定量证据组合；定量面板仍遵循 `../figure/SKILL.md`。
-- 不调用 Mermaid 或 MATLAB。GeoGebra 无法自动运行时不伪造完成状态，改为输出可粘贴指令与生成说明。
+- 几何机理图不调用 Mermaid 或 MATLAB；GeoGebra 无法自动运行时不伪造完成状态，改为输出可粘贴指令与生成说明。
 
 ## 工作流
 
@@ -74,7 +76,7 @@ final_size：最终宽高
 | 机理图 | 模型对象与因果/作用关系 | Matplotlib patches + arrows | 关键机制居中，次要边界弱化 |
 | 二维几何图 | GeoGebra 点、线、圆锥曲线、区域与参数 | GeoGebra 2D；Matplotlib 后备 | 坐标、角度、长度和可见性与公式一致 |
 | 三维几何图 | GeoGebra 点、向量、平面、曲面与立体 | GeoGebra 3D；mplot3d 后备 | 锁定视角、范围和关键遮挡关系 |
-| 流程图 | NetworkX `DiGraph` | Matplotlib patches/arrows | 手动分层；判断、循环和回退必须真实存在 |
+| 流程图 | 逻辑复杂（判定树、多分支判据、算法流程）优先 Mermaid；其余 NetworkX `DiGraph` | Mermaid 渲染 SVG/PNG；Matplotlib patches/arrows | 判断、循环和回退必须真实存在；Mermaid 显式设 `direction` 与子图层级 |
 | 架构图 | NetworkX `DiGraph`/`MultiDiGraph` | Matplotlib patches/arrows | 按输入、模型、求解、输出或实际模块分区 |
 | 拓扑图 | NetworkX `Graph`/`DiGraph` | Matplotlib + NetworkX draw primitives | 布局种子固定，关键路径手动微调 |
 
@@ -109,6 +111,19 @@ final_size：最终宽高
 - 判断节点必须具有可核验的条件和不同出口；循环必须明确返回位置和终止条件。
 - 通用的“数据输入 -> 模型计算 -> 输出结果”不单独成图。
 - 架构图中的输入、状态、参数、控制量和输出不得混用同一种箭头语义。
+- **文字块纪律**：所有文字块不得与其他文字块或连线/箭头重叠——Mermaid 自动布局后人工复核节点间距与文字是否压线；Matplotlib 手绘时显式错开坐标，不让标注落在连线/箭头上。
+
+#### 复杂逻辑流程图（Mermaid）
+
+- **触发**：判定树、多分支判据（如多光束判据）、相位提取等算法流程，判断/循环/回退多到仅靠文字难以描述时，优先用 Mermaid 表达；Mermaid 只表达真实存在的分支与回退，禁止用分支美化不存在的逻辑。
+- **源码**：用 `flowchart` 类型，以 `.mmd` 文件为可编辑交付物；节点用动宾短语，判断节点写清条件与各出口。
+- **渲染**：
+  ```powershell
+  mmdc -i <stem>.mmd -o <stem>.svg -o <stem>.png
+  # mmdc 缺失时：npx -y @mermaid-js/mermaid-cli -i <stem>.mmd -o <stem>.svg -o <stem>.png
+  ```
+- **渲染后必须人工复核**：方向是否符合阅读顺序、子图/节点是否互相重叠、文字块是否压连线或箭头；自动布局混乱时用 `direction`、子图分组或节点顺序约束修正，不把未经检查的默认布局当作终稿。
+- **无法渲染**：交付 `<stem>.mmd` + `<stem>_生成说明.md`，在 `results/图表论证清单.json` 标记 `PENDING_RENDER`，不伪造完成状态。
 
 #### 拓扑
 
@@ -158,6 +173,8 @@ figures/<stem>_生成说明.md         # 参数来源、2D/3D 视图、标签偏
 
 并在 `results/图表论证清单.json` 中使用 `PENDING_RENDER`。用户生成图后，将状态改为 `KEEP` 或其他最终决策，再运行文件审计和 `P2`；存在 `PENDING_RENDER` 时不得声称论文配图完成。
 
+Mermaid 复杂流程图（`.mmd` 为可编辑源）同源导出 SVG 与至少 300 DPI PNG；无法自动渲染时交付 `<stem>.mmd` + `<stem>_生成说明.md` 并同样标记 `PENDING_RENDER`。Mermaid 渲染出的 SVG 文字可编辑，可直接通过 `figure_audit.py` 的 SVG 文本检查。
+
 随后运行：
 
 ```powershell
@@ -165,7 +182,7 @@ python "<SKILL_ROOT>/tools/figure/scripts/check_figure.py" "<PROJECT_ROOT>/figur
 python "<SKILL_ROOT>/references/roles/编程手/scripts/figure_audit.py" "<PROJECT_ROOT>/figures" --manifest "<PROJECT_ROOT>/results/图表论证清单.json" --questions q1 q2 --strict
 ```
 
-实际打开 PNG 和灰度预览，检查缺字、裁切、箭头方向、边交叉、标签遮挡、空间关系、视角和最终尺寸可读性。问题只能通过修改源代码和重绘修正，不直接编辑位图。
+实际打开 PNG 和灰度预览，检查缺字、裁切、箭头方向、边交叉、标签遮挡、**文字块互相重叠（文字-文字/文字-线）**、空间关系、视角和最终尺寸可读性。问题只能通过修改源代码和重绘修正，不直接编辑位图。
 
 ## 论文放置接口
 
@@ -183,6 +200,6 @@ python "<SKILL_ROOT>/references/roles/编程手/scripts/figure_audit.py" "<PROJE
 
 - 禁止编造数据、节点、模块、箭头、空间关系和未实现的算法步骤。
 - 禁止为满足图数、题号覆盖或形式完整度生成无论证价值的图。
-- 禁止使用 Mermaid、MATLAB 或在线绘图服务作为回退；GeoGebra 是几何机理图的首选工具。
-- 禁止默认自动布局直接作为终稿。
+- 禁止使用 MATLAB 或在线绘图服务作为回退；几何机理图不落入 Mermaid。复杂流程图的 Mermaid 渲染失败时交付 `.mmd` 源码与渲染说明并标记 `PENDING_RENDER`，不得用在线服务静默代渲或伪造完成。
+- 禁止默认自动布局直接作为终稿（Mermaid 渲染后必须人工复核方向、子图间距和文字是否压线）。
 - 禁止只导出位图而不保留可运行源代码和可编辑 SVG。

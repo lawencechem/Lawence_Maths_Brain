@@ -4,9 +4,10 @@ scipilot-figure-skill :: visual_qa.py
 出图后的「程序自检」+「渲染预览」——自检闭环的机器那一层。
 
 设计分工：
-- **程序（本脚本）** 抓**确定性**问题：缺字乱码、文字越界裁切、刻度标签重叠。
+- **程序（本脚本）** 抓**确定性**问题：缺字乱码、文字越界裁切、刻度标签重叠、
+  文字块互相重叠。
 - **AI 读图**（见 references/visual_review.md）抓**感知性**问题：图例压数据、
-  子图标签是否对齐、配色灰度可分、整体观感。
+  文字压曲线/数据点、子图标签是否对齐、配色灰度可分、整体观感。
 
 两层串起来才是完整的「出图 → 渲 PNG → 程序自检 + AI 读图 → 回改 → 再看」闭环。
 
@@ -19,6 +20,9 @@ scipilot-figure-skill :: visual_qa.py
     告警通道，任一报 "missing from font" 即判定成图会出方框/乱码。
   * **文字越界裁切**（WARN）：Text 的 window_extent 超出画布边界。
   * **刻度标签重叠**（WARN）：相邻 tick label 的包围盒水平/垂直相交。
+  * **文字块互相重叠**（WARN）：任意两个非刻度文字块（标注/图例/轴标签/标题等）
+    的包围盒相交。刻度-刻度字对仍由刻度重叠检测负责，不在此重复上报。
+    程序只查文字-文字；文字压线/压数据点属感知性问题，由 AI 读图复核。
 
 severity 约定与 check_figure.py 保持一致：INFO < WARN < FAIL。
 
@@ -140,7 +144,9 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
         1. 缺字乱码（FAIL）—— 中文/特殊符号字体未命中。
         2. 文字越界裁切（WARN）—— 标题/轴标签/标注超出画布。
         3. 刻度标签重叠（WARN）—— x/y 轴相邻刻度包围盒相交。
-        4. 主题合规（可选，theme='cumcm' 时）—— 调用 cumcm_theme.
+        4. 文字块互相重叠（WARN）—— 任意两个非刻度文字块包围盒相交；
+           刻度-刻度字对由第 3 项覆盖，不重复上报。
+        5. 主题合规（可选，theme='cumcm' 时）—— 调用 cumcm_theme.
            validate_theme_compliance：刻度上限 / 禁用原生色图 / 色板白名单 /
            网格样式。默认 theme=None 不启用，保持既有行为。
 
@@ -220,7 +226,22 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
             "y 轴：增大子图高度或减少刻度数。"
         ))
 
-    # ---- 4. 主题合规（可选）----
+    # ---- 4. 文字块互相重叠（文字-文字；刻度-刻度由第 3 项覆盖）----
+    text_overlaps = _text_block_overlaps(fig, renderer, overlap_tol_px)
+    if text_overlaps:
+        pair_samples = []
+        for t_a, t_b in text_overlaps[:3]:
+            sa = t_a.get_text().strip().replace("\n", " ")[:20]
+            sb = t_b.get_text().strip().replace("\n", " ")[:20]
+            pair_samples.append(f"「{sa}」↔「{sb}」")
+        issues.append((
+            "WARN",
+            f"{len(text_overlaps)} 组文字块互相重叠：{'；'.join(pair_samples)}。"
+            "调整 xytext / bbox_to_anchor 偏移或精简标注数量。"
+            "程序只查文字-文字；文字压线/压数据点由 AI 读图复核。"
+        ))
+
+    # ---- 5. 主题合规（可选）----
     if theme == "cumcm":
         try:
             import cumcm_theme
@@ -233,6 +254,46 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
             issues.extend(cumcm_theme.validate_theme_compliance(fig))
 
     return issues
+
+
+def _bboxes_intersect(bb_a, bb_b, tol: float) -> bool:
+    """两个窗口包围盒是否在 x、y 两个方向都相交（重叠区域大于容差）。"""
+    ix = min(bb_a.x1, bb_b.x1) - max(bb_a.x0, bb_b.x0)
+    iy = min(bb_a.y1, bb_b.y1) - max(bb_a.y0, bb_b.y0)
+    return ix > tol and iy > tol
+
+
+def _text_block_overlaps(fig, renderer, tol: float = 1.0) -> list[tuple]:
+    """全量可见文字块的两两包围盒相交检测。
+
+    返回 ``[(text_a, text_b), ...]``。两者都是刻度标签的字对会被跳过——
+    相邻刻度重叠已由 ``_ticklabels_overlap`` 覆盖，避免重复上报；
+    其余任意组合（标注-标注、图例-标注、标注-轴标签、图例-图例等）均纳入。
+    """
+    tick_ids = set()
+    for ax in fig.axes:
+        for tl in (*ax.get_xticklabels(), *ax.get_xticklabels(minor=True),
+                   *ax.get_yticklabels(), *ax.get_yticklabels(minor=True)):
+            tick_ids.add(id(tl))
+
+    items: list[tuple] = []
+    for t in _visible_texts(fig):
+        try:
+            bb = t.get_window_extent(renderer)
+        except Exception:
+            continue
+        items.append((id(t), t, bb))
+
+    overlaps: list[tuple] = []
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            id_a, t_a, bb_a = items[i]
+            id_b, t_b, bb_b = items[j]
+            if id_a in tick_ids and id_b in tick_ids:
+                continue
+            if _bboxes_intersect(bb_a, bb_b, tol):
+                overlaps.append((t_a, t_b))
+    return overlaps
 
 
 def _ticklabels_overlap(labels, renderer, axis: str, tol: float) -> bool:
@@ -300,8 +361,8 @@ def render_preview(fig_or_path, out_png: str = "_preview.png",
 def print_report(issues: list[tuple[str, str]]) -> str:
     """打印 audit_layout 的结果，返回 verdict（PASS/WARN/FAIL）。"""
     if not issues:
-        print("  [PASS] 程序自检未发现缺字 / 裁切 / 刻度重叠。")
-        print("  >>> 仍需 AI 读图复核感知性问题（见 visual_review.md）。")
+        print("  [PASS] 程序自检未发现缺字 / 裁切 / 刻度重叠 / 文字块重叠。")
+        print("  >>> 仍需 AI 读图复核感知性问题（文字压线/压数据点等，见 visual_review.md）。")
         return "PASS"
     max_sev = max(SEVERITY[s] for s, _ in issues)
     verdict = {2: "FAIL", 1: "WARN", 0: "INFO"}[max_sev]
@@ -323,6 +384,9 @@ def _demo() -> int:
     ax.set_xticklabels(cats)  # 故意不旋转 -> x 轴刻度必然重叠
     ax.set_title("An intentionally overlong title that runs off the canvas edge")
     ax.set_ylabel("value")
+    # 两个几乎叠在一起的标注文字 -> 文字块互相重叠（WARN）
+    ax.text(5.0, 0.5, "overlapping annotation text A", fontsize=7)
+    ax.text(5.1, 0.48, "overlapping annotation text B", fontsize=7)
 
     print("=== visual_qa demo：对一张刻意做坏版面的图自检 ===")
     issues = audit_layout(fig)

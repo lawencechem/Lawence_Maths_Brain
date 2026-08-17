@@ -105,6 +105,7 @@ setup_style(journal='general', lang='zh', theme='cumcm')       # 国奖评阅审
 - `figsize=(目标宽, 目标高)` 单位英寸——直接定最终尺寸
 - 沿用项目的语义配色；无既有体系时使用低饱和色觉友好颜色 + 冗余编码（不同线型/marker），不直接调用原生默认色板作为最终方案
 - 误差棒/阴影要在图注交代是 SD / SEM / 95% CI + n
+- **文字避让**：数据点标签、曲线末端标注、显著性符号等标注文字必须避开曲线/线条/数据点，也避开其他文字块（标题、轴标签、图例、其他标注）。用 `annotate` + `xytext` 偏移 / `arrowprops` 锚定空白区，或减少标注数量只标关键点；类别多用末端直接标注时逐条错开高度，不用默认位置堆在数据上
 
 数学建模场景：`raw/process/result` 仅作为可选证据来源标签，不构成类别、题号或图型配额。每张候选图都必须登记到 `results/图表论证清单.json`；无明确论证缺口的图不生成。
 
@@ -113,7 +114,7 @@ setup_style(journal='general', lang='zh', theme='cumcm')       # 国奖评阅审
 1. **语义层**：`tools/figure/references/design/viz_pitfalls.md` 18+ 条避坑清单——图型/配色/误差是否踩坑
 2. **形式层**：`tools/figure/references/quality/publication_checklist.md` 形式合规（尺寸、DPI、字号、误差交代）
 3. **视觉层**：
-   - `tools/figure/scripts/visual_qa.render_preview(fig, 'figs/_preview.png')` 渲预览，`tools/figure/scripts/visual_qa.audit_layout(fig)` 程序抓缺字/裁切/重叠
+   - `tools/figure/scripts/visual_qa.render_preview(fig, 'figs/_preview.png')` 渲预览，`tools/figure/scripts/visual_qa.audit_layout(fig)` 程序抓缺字/裁切/刻度重叠/**文字-文字重叠**（程序只查文字-文字；文字压线/压数据点属感知问题，由读图复核）
    - 国奖主题图加跑 `audit_layout(fig, theme='cumcm')`——程序抓刻度上限/禁用原生色图/色板白名单/网格样式（见 `design_theory.md` §13 四坑）
    - 用 Read 工具读 PNG，对照 `tools/figure/references/quality/visual_review.md` 的 8 项清单核对
    - 发现问题 → 回改 → 重渲 → 再读，最多 3 轮
@@ -240,6 +241,7 @@ kaleido>=0.2.1         # 可选；plotly 导出
 4. **字号可读**——正文标签和刻度数字 7-9 pt，最小 ≥ 6 pt
 5. **误差必有交代**——图注必须写清误差类型、样本量 n、检验方法、显著性符号定义
 6. **语义优先**——图型由数据形态和论证任务决定；每个面板必须回答一个唯一问题，不得为凑图型种类而用不同形式重复展示相同数据
+7. **文字避让**——标注文字不得压曲线/线条/数据点，也不得与其他文字块互相重叠；`audit_layout` 只查文字-文字，文字压线由 AI 读图复核
 
 ## 何时加载
 

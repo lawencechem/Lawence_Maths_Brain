@@ -42,6 +42,13 @@ def _geogebra_candidates() -> list[Path]:
     return list(dict.fromkeys(path.expanduser() for path in candidates))
 
 
+def _find_mermaid() -> tuple[str | None, str | None]:
+    """返回 (mmdc 路径, npx 路径)。mermaid-cli 未安装时 mmdc 为 None。"""
+    mmdc = shutil.which("mmdc")
+    npx = shutil.which("npx")
+    return (str(mmdc) if mmdc else None, str(npx) if npx else None)
+
+
 def inspect_environment() -> dict:
     packages: dict[str, str] = {}
     missing: list[str] = []
@@ -51,22 +58,33 @@ def inspect_environment() -> dict:
         except importlib.metadata.PackageNotFoundError:
             missing.append(package)
     geogebra = next((path.resolve() for path in _geogebra_candidates() if path.is_file()), None)
+    mmdc, npx = _find_mermaid()
     return {
         "python": sys.version.split()[0],
         "packages": packages,
         "missing_python_packages": missing,
         "geogebra": str(geogebra) if geogebra else None,
+        "mermaid": mmdc,
+        "npx": npx,
         "python_ready": not missing,
         "geogebra_ready": geogebra is not None,
+        "mermaid_ready": mmdc is not None,
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="检查 Matplotlib/NetworkX/NumPy 与 GeoGebra")
+    parser = argparse.ArgumentParser(
+        description="检查 Matplotlib/NetworkX/NumPy、GeoGebra 与可选 Mermaid CLI"
+    )
     parser.add_argument(
         "--require-geogebra",
         action="store_true",
         help="几何任务需要本轮自动渲染时，GeoGebra 缺失返回非零退出码",
+    )
+    parser.add_argument(
+        "--require-mermaid",
+        action="store_true",
+        help="复杂流程图需要本轮自动渲染时，mermaid-cli（mmdc）缺失返回非零退出码",
     )
     args = parser.parse_args()
     report = inspect_environment()
@@ -74,6 +92,8 @@ def main() -> int:
     if not report["python_ready"]:
         return 1
     if args.require_geogebra and not report["geogebra_ready"]:
+        return 1
+    if args.require_mermaid and not report["mermaid_ready"]:
         return 1
     return 0
 

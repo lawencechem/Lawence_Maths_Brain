@@ -4,7 +4,7 @@
 
 **面向数学建模竞赛与建模项目的三阶段工作流**
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](VERSION)
 [![Agent Skill](https://img.shields.io/badge/Agent-Skill-4B8BBE.svg)](SKILL.md)
 
 **关注我**
@@ -21,7 +21,7 @@
 
 本 Skill 将数学建模任务拆分为 **建模分析 → 代码实现 → 论文撰写** 三个阶段。既可以按顺序完成整道题，也可以只执行其中一个阶段。
 
-当前版本：[`1.2.0`](VERSION)
+当前版本：[`2.0.0`](VERSION)
 
 > 生成的论文仅供参考。论文结构与格式必须以目标竞赛当届官方规则和官方模板为准。
 
@@ -314,9 +314,9 @@ python -m compileall -q tools references/roles/编程手/scripts
 
 ## 📋 版本与更新日志
 
-当前版本：[`1.2.0`](VERSION)
+当前版本：[`2.0.0`](VERSION)
 
-`1.2.0` 新增科研可视化工具融合，将 LaTeX 论文改为可选（默认只生成 Word），并重组可视化参考文档。详细内容见 [CHANGELOG.md](CHANGELOG.md)。
+`2.0.0` 把建模决策回路重构为分布式补丁（各角色只认本地规则，不再有中央协议），新增 3σ 异常门控、合成数据回收检验、可辨识带、未解之谜固定句式与机制主张四重锁定。详细内容见 [CHANGELOG.md](CHANGELOG.md)。
 
 采用语义化版本 `MAJOR.MINOR.PATCH`：
 

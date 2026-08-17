@@ -135,8 +135,8 @@ def _visible_texts(fig) -> list:
     return out
 
 
-def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
-                 theme: str | None = None) -> list[tuple[str, str]]:
+def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0
+                 ) -> list[tuple[str, str]]:
     """
     对一张 matplotlib Figure 做版面自检。返回 [(severity, msg), ...]。
 
@@ -146,9 +146,8 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
         3. 刻度标签重叠（WARN）—— x/y 轴相邻刻度包围盒相交。
         4. 文字块互相重叠（WARN）—— 任意两个非刻度文字块包围盒相交；
            刻度-刻度字对由第 3 项覆盖，不重复上报。
-        5. 主题合规（可选，theme='cumcm' 时）—— 调用 cumcm_theme.
-           validate_theme_compliance：刻度上限 / 禁用原生色图 / 色板白名单 /
-           网格样式。默认 theme=None 不启用，保持既有行为。
+        5. 主题合规（固定启用）—— 调用 cumcm_theme.validate_theme_compliance：
+           刻度上限 / 禁用原生色图 / 色板白名单 / 网格样式。
 
     非破坏性：只渲染测量，不修改 fig 内容。
     """
@@ -241,17 +240,16 @@ def audit_layout(fig, clip_tol_px: float = 2.0, overlap_tol_px: float = 1.0,
             "程序只查文字-文字；文字压线/压数据点由 AI 读图复核。"
         ))
 
-    # ---- 5. 主题合规（可选）----
-    if theme == "cumcm":
-        try:
-            import cumcm_theme
-        except ImportError:
-            issues.append((
-                "WARN",
-                "请求 theme='cumcm' 主题合规检查，但 cumcm_theme 不可导入，已跳过。"
-            ))
-        else:
-            issues.extend(cumcm_theme.validate_theme_compliance(fig))
+    # ---- 5. 主题合规（固定启用）----
+    try:
+        import cumcm_theme
+    except ImportError:
+        issues.append((
+            "WARN",
+            "国奖主题合规检查失败：cumcm_theme 不可导入，已跳过。"
+        ))
+    else:
+        issues.extend(cumcm_theme.validate_theme_compliance(fig))
 
     return issues
 

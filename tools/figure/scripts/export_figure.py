@@ -111,8 +111,8 @@ def export_figure(
         # _val_or_rc 回退到该 rcParam 而静默走 tight 裁切（改变合同尺寸）；字符串
         # "standard" 在 print_figure 中又是 truthy，直接进 adjust_bbox 抛错
         # ('str' object has no attribute 'size')。因此 tight=False 时必须用 rc_context
-        # 临时把 savefig.bbox 覆盖回 None，强制按 fig 原生边界导出。默认 colorblind
-        # 主题不设该 rcParam，rc_context 覆盖后行为与之前一致。
+        # 临时把 savefig.bbox 覆盖回 None，强制按 fig 原生边界导出。国奖主题（唯一
+        # 主题）固定设该 rcParam，rc_context 覆盖后行为与之前一致。
         kwargs: dict = {
             "bbox_inches": "tight" if tight else None,
             "pad_inches": pad_inches,

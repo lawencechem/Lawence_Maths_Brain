@@ -86,16 +86,14 @@ python "<SKILL_ROOT>/tools/figure/scripts/profile_data.py" data.csv --group grou
 import sys, os
 sys.path.insert(0, os.path.join(SKILL_ROOT, 'tools', 'figure', 'scripts'))
 from setup_style import setup_style
-setup_style(journal='nature', lang='en')             # 英文 Nature
-setup_style(journal='general', lang='zh', serif_for_zh=True)   # 中文宋体混排
-setup_style(journal='general', lang='zh', theme='cumcm')       # 国奖评阅审美主题
+setup_style(journal='general', lang='zh')            # 中文宋体/Times 混排 + 国奖主题
 ```
 
 `SciencePlots` 装了自动用，没装回退到内置预设。
 
-`theme` 参数：`'colorblind'`（默认，Okabe-Ito 色盲安全）或 `'cumcm'`（品牌四色 + 手动刻度 +
-中文宋体/Times 混排，定义见 `scripts/cumcm_theme.py`）。国赛论文若要求统一品牌四色，数据图与
-示意图（`../diagram/SKILL.md`）都显式开 `theme='cumcm'`，避免论文里两套色系。
+主题固定为 `'cumcm'`（国奖评阅审美主题：品牌四色 + 手动刻度 + 中文宋体/Times 混排，定义见
+`scripts/cumcm_theme.py`），`setup_style()` 不再有 `theme` 参数。数据图与示意图
+（`../diagram/SKILL.md`）统一用同一色板，避免论文里两套色系。
 
 ### 第 6 步：绘制
 
@@ -115,7 +113,7 @@ setup_style(journal='general', lang='zh', theme='cumcm')       # 国奖评阅审
 2. **形式层**：`tools/figure/references/quality/publication_checklist.md` 形式合规（尺寸、DPI、字号、误差交代）
 3. **视觉层**：
    - `tools/figure/scripts/visual_qa.render_preview(fig, 'figs/_preview.png')` 渲预览，`tools/figure/scripts/visual_qa.audit_layout(fig)` 程序抓缺字/裁切/刻度重叠/**文字-文字重叠**（程序只查文字-文字；文字压线/压数据点属感知问题，由读图复核）
-   - 国奖主题图加跑 `audit_layout(fig, theme='cumcm')`——程序抓刻度上限/禁用原生色图/色板白名单/网格样式（见 `design_theory.md` §13 四坑）
+   - `audit_layout(fig)` 固定跑国奖主题合规——程序抓刻度上限/禁用原生色图/色板白名单/网格样式（见 `design_theory.md` §13 四坑）
    - 用 Read 工具读 PNG，对照 `tools/figure/references/quality/visual_review.md` 的 8 项清单核对
    - 发现问题 → 回改 → 重渲 → 再读，最多 3 轮
 
@@ -237,7 +235,7 @@ kaleido>=0.2.1         # 可选；plotly 导出
 
 1. **按最终尺寸出图，不二次缩放**——figsize 直接设论文实际尺寸
 2. **矢量优先**——折线/柱状/散点/热力/误差棒 → PDF/SVG，不用 JPEG
-3. **配色对色盲友好**——默认 colorblind 色板 + 冗余编码 + 灰度预览
+3. **配色固定国奖主题**——品牌四色 + 冗余编码 + 灰度预览
 4. **字号可读**——正文标签和刻度数字 7-9 pt，最小 ≥ 6 pt
 5. **误差必有交代**——图注必须写清误差类型、样本量 n、检验方法、显著性符号定义
 6. **语义优先**——图型由数据形态和论证任务决定；每个面板必须回答一个唯一问题，不得为凑图型种类而用不同形式重复展示相同数据

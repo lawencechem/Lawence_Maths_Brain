@@ -20,7 +20,7 @@ scipilot-figure-skill :: cumcm_theme.py
     fig, ax = plt.subplots(figsize=...) # 画图，全部颜色取自 theme.PALETTE / TINTS
     issues = theme.validate_theme_compliance(fig)   # [(WARN|FAIL, msg), ...]
 
-默认图走 setup_style() 的 colorblind 色板；本主题仅在显式 theme='cumcm' 时启用，
+setup_style() 固定应用本主题（唯一主题，无 theme 参数切换）；本文件只读参考，
 不改变 skill 现有默认行为。
 
 踩坑记录（见 design_theory.md「国奖主题落地的四个硬坑」）：

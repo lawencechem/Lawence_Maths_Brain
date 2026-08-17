@@ -267,7 +267,6 @@ def setup_style(
     use_sciplots: bool = True,
     serif_for_zh: bool = False,
     constrained_layout: bool = True,
-    theme: str = "colorblind",
 ) -> dict:
     """
     应用出版级样式预设。
@@ -280,18 +279,15 @@ def setup_style(
         constrained_layout: 默认 True——全局开启 constrained_layout 自适应排版，
             从源头减少标题/轴标签被裁、图例压数据、子图互相重叠。需要手动
             subplots_adjust 或某些 colorbar 写法时可传 False 关闭。
-        theme: 'colorblind'（默认，Okabe-Ito 色盲安全）| 'cumcm'
-            （国奖评阅审美主题：品牌四色 + 手动刻度 + 中文宋体/Times 混排，
-            定义见同目录 cumcm_theme.py）。默认值保持既有行为。
     Returns:
         dict 包含 keys: journal / lang / sciplots_used / cjk_font /
-        constrained_layout / theme / palette
+        constrained_layout / theme / palette。主题固定为国奖评阅审美
+        'cumcm'（品牌四色 + 手动刻度 + 中文宋体/Times 混排，定义见同目录
+        cumcm_theme.py），不再提供 theme 切换。
     """
     if journal not in JOURNAL_PRESETS:
         raise ValueError(f"Unknown journal preset: {journal}. "
                          f"Choose from {sorted(JOURNAL_PRESETS)}")
-    if theme not in {"colorblind", "cumcm"}:
-        raise ValueError(f"Unknown theme: {theme!r}. Choose from 'colorblind', 'cumcm'.")
 
     sciplots_used = False
     if use_sciplots:
@@ -313,14 +309,12 @@ def setup_style(
     elif lang != "en":
         raise ValueError(f"lang must be 'en' or 'zh', got {lang!r}")
 
-    palette = "colorblind"
-    if theme == "cumcm":
-        # 国奖主题：在期刊预设之上覆盖品牌色 / 手动刻度 / 中文宋体+Times 混排。
-        # 必须在 configure_chinese_fonts 之后调用，让具体字体列表（硬坑 1 的修复）
-        # 覆盖 serif/sans-serif 间接配置。
-        import cumcm_theme
-        cumcm_theme.apply()
-        palette = "cumcm"
+    # 国奖主题（唯一主题）：在期刊预设之上覆盖品牌色 / 手动刻度 / 中文宋体+Times 混排。
+    # 必须在 configure_chinese_fonts 之后调用，让具体字体列表（硬坑 1 的修复）
+    # 覆盖 serif/sans-serif 间接配置。
+    import cumcm_theme
+    cumcm_theme.apply()
+    palette = "cumcm"
 
     return {
         "journal": journal,
@@ -328,7 +322,7 @@ def setup_style(
         "sciplots_used": sciplots_used,
         "cjk_font": cjk_font,
         "constrained_layout": constrained_layout,
-        "theme": theme,
+        "theme": "cumcm",
         "palette": palette,
     }
 

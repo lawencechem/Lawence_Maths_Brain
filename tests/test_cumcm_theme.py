@@ -1,7 +1,7 @@
 """国奖主题 cumcm_theme 的合规检查测试。
 
 覆盖四个硬坑中的可测项：刻度上限、禁用原生色图、色板白名单、axis-off 跳过刻度检查，
-以及 setup_style(theme=...) / visual_qa.audit_layout(fig, theme='cumcm') 集成。
+以及 setup_style() 固定应用国奖主题 / visual_qa.audit_layout() 固定启用主题合规。
 """
 import sys
 import unittest
@@ -102,25 +102,26 @@ class IntegrationTests(unittest.TestCase):
         matplotlib.rcParams.update(self._saved_rc)
         plt.close("all")
 
-    def test_setup_style_theme_param(self):
-        info = setup_style.setup_style(journal="general", lang="en", theme="cumcm")
+    def test_setup_style_hardcodes_cumcm(self):
+        info = setup_style.setup_style(journal="general", lang="en")
         self.assertEqual(info["theme"], "cumcm")
         self.assertEqual(info["palette"], "cumcm")
         # 具体字体列表直接进 font.family（硬坑 1），而非经 font.serif 间接
         self.assertIn("SimSun", matplotlib.rcParams["font.family"])
-        with self.assertRaises(ValueError):
+        # 国奖主题固定应用，不再有 theme 参数切换
+        with self.assertRaises(TypeError):
             setup_style.setup_style(theme="unknown")
 
-    def test_audit_layout_with_cumcm_theme(self):
+    def test_audit_layout_always_runs_cumcm_theme(self):
         fig, ax = plt.subplots()
         ax.bar([0, 1, 2], [1, 2, 3], color=cumcm_theme.PALETTE["primary"])
         ax.set_xticks([0, 1, 2])
         ax.set_yticks([0, 1, 2])
-        # 既有布局检查（缺字/裁切/重叠）+ 主题合规一起跑，不抛异常
-        issues = visual_qa.audit_layout(fig, theme="cumcm")
+        # 既有布局检查（缺字/裁切/重叠）+ 主题合规固定一起跑，不抛异常
+        issues = visual_qa.audit_layout(fig)
         self.assertIsInstance(issues, list)
-        # 默认 theme=None 保持既有行为
-        self.assertEqual(visual_qa.audit_layout(fig), [])
+        # 合规图（品牌色 + 手动刻度）不应产生主题违规
+        self.assertEqual(issues, [])
 
 
 if __name__ == "__main__":

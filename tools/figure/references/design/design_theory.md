@@ -467,7 +467,7 @@ ax.axhline(np.median(y), lw=1.2, ls="--", color="#767676", alpha=0.6)
 ## 13) 国奖主题落地的五个硬坑（cumcm_theme.py）
 
 `tools/figure/scripts/cumcm_theme.py` 是国奖评阅审美的参数化主题（品牌四色 + TINTS 浅底 +
-手动刻度上限 x≤8/y≤6 + 合规检查）。数据图用 `setup_style(theme='cumcm')`，示意图用
+手动刻度上限 x≤8/y≤6 + 合规检查）。数据图用 `setup_style()`（主题固定为 `cumcm`），示意图用
 `tools/diagram/SKILL.md` 的共享色板。以下五个坑是实测踩出来的，照抄会翻车：
 
 ### 硬坑 1：mpl 3.11 不跨 `font.serif` 列表做字形回退

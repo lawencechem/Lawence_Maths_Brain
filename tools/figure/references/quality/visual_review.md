@@ -101,7 +101,7 @@ print_report(issues)
 | x 轴刻度重叠 | `ax.tick_params(axis='x', rotation=30)`；减少刻度数；缩短标签 |
 | 子图标签不对齐 | `add_panel_labels(fig, style='nature')` 统一重打 |
 | 子图互相重叠 | `finalize_figure(fig)` 或建图时 `constrained_layout=True` |
-| 配色不可区分/灰度糊 | 换 Okabe-Ito / `colorblind` 调色板 + 加线型/marker |
+| 配色不可区分/灰度糊 | 换国奖品牌四色 `cumcm_theme.PALETTE` + 加线型/marker |
 | 数据被切掉 | 放宽 `set_xlim/set_ylim`，或 `ax.margins(0.05)` |
 
 ### 第 5 步：重新渲染，再读图

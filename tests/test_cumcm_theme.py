@@ -93,7 +93,7 @@ class ValidateThemeTests(unittest.TestCase):
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
-        # setup_style(theme='cumcm') 会改全局 rcParams（savefig.bbox、font.family 等），
+        # setup_style() 固定应用国奖主题，会改全局 rcParams（savefig.bbox、font.family 等），
         # 必须快照并在 tearDown 恢复，避免污染同进程的其他测试。
         self._saved_rc = matplotlib.rcParams.copy()
 

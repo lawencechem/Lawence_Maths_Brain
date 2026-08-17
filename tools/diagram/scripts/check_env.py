@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查数模非数据图的 Python 与可选 GeoGebra 环境。"""
+"""检查数模非数据图的 Python、可选 GeoGebra 与可选 Mermaid CLI 环境。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import importlib.metadata
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -42,11 +43,33 @@ def _geogebra_candidates() -> list[Path]:
     return list(dict.fromkeys(path.expanduser() for path in candidates))
 
 
-def _find_mermaid() -> tuple[str | None, str | None]:
-    """返回 (mmdc 路径, npx 路径)。mermaid-cli 未安装时 mmdc 为 None。"""
+def _mmdc_works(mmdc_path: str) -> bool:
+    """mermaid-cli 的 .CMD shim 可能存在但包未安装，必须实际调用验证。
+
+    只跑 `--version`（快速、离线），退出码非 0 即视为不可用。
+    """
+    try:
+        result = subprocess.run(
+            [mmdc_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _find_mermaid() -> tuple[str | None, str | None, bool]:
+    """返回 (mmdc 路径, npx 路径, mmdc 是否可用)。
+
+    npx 可在 mmdc 缺失时按需拉取 @mermaid-js/mermaid-cli（需网络与 Chrome），
+    但只有真实调用了 mmdc 才标记 mermaid_ready。
+    """
     mmdc = shutil.which("mmdc")
     npx = shutil.which("npx")
-    return (str(mmdc) if mmdc else None, str(npx) if npx else None)
+    ready = bool(mmdc) and _mmdc_works(str(mmdc))
+    return (str(mmdc) if mmdc else None, str(npx) if npx else None, ready)
 
 
 def inspect_environment() -> dict:
@@ -58,7 +81,7 @@ def inspect_environment() -> dict:
         except importlib.metadata.PackageNotFoundError:
             missing.append(package)
     geogebra = next((path.resolve() for path in _geogebra_candidates() if path.is_file()), None)
-    mmdc, npx = _find_mermaid()
+    mmdc, npx, mermaid_ready = _find_mermaid()
     return {
         "python": sys.version.split()[0],
         "packages": packages,
@@ -68,7 +91,7 @@ def inspect_environment() -> dict:
         "npx": npx,
         "python_ready": not missing,
         "geogebra_ready": geogebra is not None,
-        "mermaid_ready": mmdc is not None,
+        "mermaid_ready": mermaid_ready,
     }
 
 

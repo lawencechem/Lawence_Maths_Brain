@@ -19,7 +19,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 
 - Python `.py`、MATLAB `.m`，或用户要求的两套求解实现。
 - `results/` 中的运行结果表格和必要文本结果。
-- `figures/` 中由真实模型、代码和结果生成的候选图。数据图可使用 `raw_qN_*`、`process_qN_*`、`result_qN_*` 来源标签；非数据图使用语义前缀。Matplotlib 和 GeoGebra 2D 图同源导出 SVG 与至少 300 DPI PNG；GeoGebra 3D 图保留 `.ggb` 源文件并导出高分辨率 PNG。无法自动渲染时交付 `.geogebra.txt` 和生成说明，不按类别或子问题凑数。
+- `figures/` 中由真实模型、代码和结果生成的候选图。数据图可使用 `raw_qN_*`、`process_qN_*`、`result_qN_*` 来源标签；非数据图使用语义前缀。Matplotlib 和 GeoGebra 2D 图同源导出 SVG 与至少 300 DPI PNG；GeoGebra 3D 图保留 `.ggb` 源文件并导出高分辨率 PNG；复杂流程图的 Mermaid 源码 `.mmd` 作为可编辑源并同源导出 SVG 与 300 DPI PNG。无法自动渲染时交付 `.geogebra.txt`、`.mmd` + 渲染说明，不按类别或子问题凑数。
 - `results/图表论证清单.json`，记录每个正式证据单元的主张、来源、载体、视觉角色、落点、前后论述和采用决策。
 - `results/复现清单.json`。
 - `results/创新证据清单.json`；允许 `items` 为空，不为满足数量制造创新。
@@ -35,7 +35,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 4. 在全量计算、参数扫描和正式出图前，派发独立质检 Subagent 执行 `P1` 最小可运行结果门禁；实现问题由编程手修正，模型合同问题携证据返回建模手。未返回 `PASS` 不得继续扩展。
 5. 按 `../innovation-special/SKILL.md` 把题目分析报告中的候选登记到 `results/创新证据清单.json`。先完整运行合理基线，再为值得测试的候选建立最小原型；按实际证据更新为 `PROTOTYPED/VERIFIED/ADOPTED/DROPPED`。物理几何简化必须完成证明合同，求解创新按问题性质选择公平基线，不强制多求解器。
 6. 从题目分析报告提取全部子问题并规范为 `q1…qN`，读取 `../../../references/视觉论证与配图策略.md`，先建立 `results/图表论证清单.json`。对每个候选证据先判断文字、公式、表格、数据图或非数据图哪个最直接；无明确读者疑问、核心主张和证据来源时不画图。
-7. 趋势、分布、误差、对比、收敛和敏感性等数据图加载 `../../../tools/figure/SKILL.md`；机理、几何、流程、架构和拓扑图加载 `../../../tools/diagram/SKILL.md`。NetworkX 只建立离散结构；连续二维/三维几何优先使用 GeoGebra Classic，无法自动渲染时输出逐行指令与生成说明，Matplotlib 作为自动后备。Mermaid 和 MATLAB 不进入正式配图路由。
+7. 趋势、分布、误差、对比、收敛和敏感性等数据图加载 `../../../tools/figure/SKILL.md`；机理、几何、流程、架构和拓扑图加载 `../../../tools/diagram/SKILL.md`。NetworkX 只建立离散结构；连续二维/三维几何优先使用 GeoGebra Classic，无法自动渲染时输出逐行指令与生成说明，Matplotlib 作为自动后备。复杂判定/算法流程图（判定树、多分支判据、算法流程）优先使用 Mermaid，以 `.mmd` 为可编辑源、渲染失败时交付源码与渲染说明；几何图不落入 Mermaid；MATLAB 不进入正式配图路由。
 8. Matplotlib 正式候选图使用 `../../../tools/figure/scripts/export_figure.py` 导出；GeoGebra 图按 `../../../tools/diagram/SKILL.md` 保存源文件、指令和图片。显式固定最终尺寸且禁用 `bbox_inches="tight"`。先运行 `check_figure.py`，再运行带 `--manifest` 和全部 `--questions` 的 `figure_audit.py --strict`；实际打开彩色 PNG 和灰度预览检查语义、层级、缺字、裁切、遮挡、颜色、尺度和面板一致性。有问题则改源文件或指令、重跑、重审，不能直接修改位图。
 9. 生成复现清单，并运行 `innovation_audit.py <创新证据清单> --project-root <PROJECT_ROOT> --strict`。审计失败时不得把候选描述为已验证。
 10. 按 `references/质检清单.md` 完成作者自检，再派发独立质检 Subagent 执行 `P2` 编程终检；未返回 `PASS` 不得进入论文阶段或宣称编程交付完成。

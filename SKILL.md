@@ -106,7 +106,7 @@ description: 当用户要求数学建模、建模竞赛、建模分析、代码�
 
 1. 可运行的 Python（`.py`）或 MATLAB（`.m`）代码；可同时交付两种语言。
 2. 代码运行结果表格，如 `.csv`、题目要求的 `.xlsx`。
-3. 由真实模型、代码和结果生成的候选证据池。数据图使用 `raw_qN_*`、`process_qN_*`、`result_qN_*` 等可选来源标签；非数据图使用 `mechanism_qN_*`、`geometry_qN_*`、`flow_qN_*`、`architecture_qN_*` 或 `topology_qN_*`。Matplotlib 和 GeoGebra 2D 正式图同源输出 SVG 与至少 300 DPI PNG；GeoGebra 3D 保留 `.ggb` 源文件并输出高分辨率 PNG，不按题号或类别机械凑数。
+3. 由真实模型、代码和结果生成的候选证据池。数据图使用 `raw_qN_*`、`process_qN_*`、`result_qN_*` 等可选来源标签；非数据图使用 `mechanism_qN_*`、`geometry_qN_*`、`flow_qN_*`、`architecture_qN_*` 或 `topology_qN_*`。Matplotlib 和 GeoGebra 2D 正式图同源输出 SVG 与至少 300 DPI PNG；GeoGebra 3D 保留 `.ggb` 源文件并输出高分辨率 PNG；复杂判定/算法流程图的 `.mmd` 作为可编辑源并同源导出 SVG 与至少 300 DPI PNG；不按题号或类别机械凑数。
 4. `results/图表论证清单.json`，记录每个子问题的读者疑问、核心主张、证据载体、图的视觉角色、章节落点、前后论述和 `KEEP/MERGE/APPENDIX/DROP/PENDING_RENDER` 决策。
 5. `results/复现清单.json`，含随机种子、输入文件 SHA-256、运行时和依赖版本、关键参数、唯一复现命令。
 6. `results/创新证据清单.json`，允许 `items` 为空；记录创新候选状态、实现或证明、验证结果和失效边界，禁止为满足数量制造创新。
@@ -128,7 +128,7 @@ description: 当用户要求数学建模、建模竞赛、建模分析、代码�
 
 - 建模手在既有 `题目分析报告.md` 中提出视觉论证需求，不新增固定交付物。
 - 编程手建立候选证据池和 `results/图表论证清单.json`。趋势、分布、误差、对比和收敛等数据图使用 `tools/figure/SKILL.md`；机理、几何、流程、架构和拓扑图使用 `tools/diagram/SKILL.md`。
-- 数据图、流程图、架构图和拓扑图统一由 Python/Matplotlib 导出，NetworkX 只负责离散结构。连续二维/三维几何机理图优先使用 GeoGebra Classic；无法稳定自动渲染时输出可直接粘贴的逐行指令、参数清单和生成说明，由用户生成图片后继续门禁。Matplotlib 是几何图的自动后备，MATLAB 不进入正式配图路由。
+- 数据图、架构图和拓扑图统一由 Python/Matplotlib 导出，NetworkX 只负责离散结构；复杂判定/算法流程图（判定树、多分支判据、算法流程）优先使用 Mermaid，以 `.mmd` 为可编辑源并同源导出 SVG 与至少 300 DPI PNG。连续二维/三维几何机理图优先使用 GeoGebra Classic；无法稳定自动渲染时输出可直接粘贴的逐行指令、参数清单和生成说明，由用户生成图片后继续门禁。Matplotlib 是几何图的自动后备，MATLAB 不进入正式配图路由。
 - 论文手在 `W1` 中决定 `KEEP`、`MERGE`、`APPENDIX` 或 `DROP`，并把 `KEEP` 图写成“图前提出问题或判断依据、图中提供证据、图后陈述观察及其对模型结论的含义”的闭环。
 
 详细门禁、清单结构、题型策略和放置逻辑见 `references/视觉论证与配图策略.md`。

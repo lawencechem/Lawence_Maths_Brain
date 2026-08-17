@@ -1,0 +1,328 @@
+% !TeX program = xelatex
+% 全国大学生数学建模竞赛 2026 冲奖型论文模板（电子提交版）
+% 依据：2026 年全国组委会论文格式规范。
+% 编译：XeLaTeX（Overleaf 中将 Compiler 设为 XeLaTeX）。
+% 提交前：删除所有“写作提示”和占位内容，确认正文不超过 30 页。
+
+\documentclass[UTF8,zihao=5,a4paper,scheme=chinese]{ctexart}
+
+\usepackage[left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{booktabs,array,tabularx,longtable,multirow}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+\hypersetup{
+  pdftitle={全国大学生数学建模竞赛论文},
+  pdfauthor={},
+  pdfsubject={数学建模竞赛论文}
+}
+
+\geometry{headheight=14pt,footskip=1.5cm}
+\pagestyle{plain}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0pt}
+\linespread{1.25}
+\setlist{nosep,leftmargin=2.8em}
+\captionsetup{font=small,labelsep=quad}
+
+% 采用范文常见的中文一级编号与阿拉伯数字下级编号。
+\ctexset{
+  section={
+    name={,、},
+    number=\chinese{section},
+    format=\centering\heiti\zihao{3},
+    beforeskip=1.2ex,
+    afterskip=1.0ex
+  },
+  subsection={
+    format=\raggedright\heiti\zihao{4},
+    beforeskip=1.0ex,
+    afterskip=0.6ex
+  },
+  subsubsection={
+    format=\raggedright\heiti\zihao{-4},
+    beforeskip=0.8ex,
+    afterskip=0.4ex
+  }
+}
+
+\definecolor{guidegray}{RGB}{105,105,105}
+\definecolor{codegray}{RGB}{247,247,247}
+\newcommand{\guide}[1]{%
+  \par\noindent{\kaishu\zihao{5}\color{guidegray}【写作提示】#1}\par
+}
+\newcommand{\keywords}[1]{%
+  \par\noindent\textbf{关键词：}#1
+}
+\newcommand{\placeholder}[1]{%
+  \par\noindent{\kaishu\color{guidegray}【#1】}\par
+}
+
+\newtheorem{definition}{定义}
+\newtheorem{theorem}{定理}
+\newtheorem{proposition}{命题}
+\newtheorem{assumption}{假设}
+
+\lstdefinestyle{cumcm}{
+  basicstyle=\ttfamily\zihao{5},
+  backgroundcolor=\color{codegray},
+  frame=single,
+  rulecolor=\color{black!20},
+  numbers=left,
+  numberstyle=\tiny\color{guidegray},
+  numbersep=8pt,
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=4,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\begin{document}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ==================== 摘要专用页 ====================
+\begin{center}
+  {\heiti\zihao{2}\bfseries 论文题目（准确揭示研究对象、核心方法与目标）\par}
+  \vspace{1.5em}
+  {\heiti\zihao{-2}\bfseries 摘\quad 要\par}
+\end{center}
+
+\guide{摘要原则上不超过 1 页，完成“任务—方法—结果—检验—价值”的闭环。少写背景，多给可核验的数值结论；模型名称必须具体。}
+
+\noindent\textbf{【总述】}用 2--3 句界定研究对象、核心矛盾与总体技术路线；紧接一句明确全文最重要的创新点或统一建模主线。
+
+\noindent\textbf{【问题一】}写清“建立什么模型—为什么适用—如何求解—得到什么定量结果”，至少给出一个关键数值、误差或比较结论。
+
+\noindent\textbf{【问题二】}说明相对问题一新增的约束、机制或数据，以及方法升级和核心结果，避免只罗列算法名称。
+
+\noindent\textbf{【问题三/四】}说明决策、预测或优化目标，给出最优方案、区间或排序及其现实含义；按实际题目增删。
+
+\noindent\textbf{【收束】}报告验证结果，如误差、拟合、交叉验证、敏感性、扰动试验或基线对比，并说明模型可迁移的边界。
+
+\keywords{模型名称；关键算法；研究对象；创新点（建议 3--5 个）}
+
+\guide{摘要终检：能否脱离正文独立阅读？是否有关键数字？是否说清创新？是否删除学校、队员和赛区信息？}
+
+\clearpage
+
+% ==================== 正文（不设置目录） ====================
+\section{问题重述}
+
+\subsection{问题背景}
+\guide{用自己的话压缩背景，只保留与变量、目标、约束直接相关的信息，通常 1--2 段。}
+\placeholder{填写正文}
+
+\subsection{问题提出}
+\guide{逐项重述输入、输出和约束，不照抄原题；明确“已知什么、求什么、评价标准是什么”。}
+\begin{enumerate}[label=（\arabic*）]
+  \item 问题一：……
+  \item 问题二：……
+  \item 问题三：……（按赛题实际增删）
+\end{enumerate}
+
+\section{问题分析与总体思路}
+
+\subsection{问题间的逻辑关系}
+\guide{说明各问是递进、并列还是共享参数，并用技术路线图展示“数据—模型—求解—验证—结论”。}
+
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox[c][4cm][c]{0.82\textwidth}{\centering 在此插入总体技术路线图}}
+  \caption{总体技术路线}
+  \label{fig:roadmap}
+\end{figure}
+
+\subsection{分问题分析}
+
+\subsubsection{问题一的分析}
+\guide{依次写任务本质、关键难点、模型选择依据、预期输出与检验方式，不提前堆公式。}
+
+\subsubsection{问题二的分析}
+\guide{说明新增约束、共享参数以及相对上一问的方法升级。}
+
+\subsubsection{问题三的分析}
+\guide{说明决策、预测或优化目标，以及结果如何被验证。}
+
+\section{模型假设}
+\guide{仅保留不可由题目或数据直接保证、但对模型成立必要的假设，并说明合理性和影响。}
+
+\begin{table}[H]
+  \centering
+  \caption{模型假设及其依据}
+  \label{tab:assumptions}
+  \begin{tabularx}{0.94\textwidth}{c X X}
+    \toprule
+    编号 & 假设内容 & 依据与影响 \\
+    \midrule
+    1 & …… & …… \\
+    2 & …… & …… \\
+    3 & …… & …… \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{符号说明}
+\guide{仅列跨章节频繁出现的核心符号；局部符号在公式附近定义。}
+
+\begin{table}[H]
+  \centering
+  \caption{主要符号说明}
+  \label{tab:symbols}
+  \begin{tabularx}{0.86\textwidth}{c X c}
+    \toprule
+    符号 & 含义 & 单位/取值域 \\
+    \midrule
+    $x_i$ & …… & …… \\
+    $\theta$ & …… & …… \\
+    $f(\cdot)$ & …… & -- \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{数据处理与探索性分析}
+\guide{若无外部数据或无需预处理，可将本章合并到各问题章节。}
+
+\subsection{数据来源与可信性}
+\placeholder{数据来源、采集日期、字段解释、引用编号与公开性}
+
+\subsection{数据预处理}
+\placeholder{缺失值、异常值、重复值、量纲统一、特征构造及处理前后样本量}
+
+\subsection{探索性分析与建模启示}
+\placeholder{只保留能支撑后续模型选择的统计量和图，每幅图均说明“看到什么，因此如何建模”}
+
+% 复制下面的“问题模型”结构即可扩展问题数量。
+\section{问题一的模型建立与求解}
+
+\subsection{目标、变量与约束}
+\guide{一次定义决策变量或状态变量、目标函数、硬约束及评价指标。}
+
+\subsection{模型原理与关键推导}
+\guide{从机理、守恒、概率或优化逻辑推导最终模型；所有公式后解释符号与作用。}
+\begin{equation}
+  \min_{\bm{x}}\; f(\bm{x})
+  \quad\text{s.t.}\quad
+  g_i(\bm{x})\le 0,\; i=1,2,\ldots,m.
+  \label{eq:model}
+\end{equation}
+式~\eqref{eq:model} 中，$\bm{x}$ 表示……，$f(\bm{x})$ 表示……。
+
+\subsection{求解算法与实现}
+\guide{给出算法流程、初始化、终止条件、复杂度和关键参数；创新步骤详述，通用步骤简述。}
+\begin{enumerate}[label=步骤 \arabic*：,leftmargin=5em]
+  \item 初始化参数和可行解；
+  \item 更新状态并计算目标函数；
+  \item 判断终止条件，输出最优解及诊断指标。
+\end{enumerate}
+
+\subsection{结果呈现与解释}
+\guide{先给核心结果表或图，再解释趋势、机制与现实含义；报告精度、单位和有效数字。}
+\begin{table}[H]
+  \centering
+  \caption{问题一核心结果}
+  \label{tab:result1}
+  \begin{tabularx}{0.94\textwidth}{X c c X}
+    \toprule
+    指标/方案 & 结果 & 基线/题设要求 & 结论 \\
+    \midrule
+    …… & …… & …… & …… \\
+    …… & …… & …… & …… \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{本问检验与小结}
+\guide{选择与本问风险匹配的检验，如残差、基线对比、边界案例、消融、交叉验证或扰动实验；用 2--3 句回答本问。}
+
+\section{问题二的模型建立与求解}
+\guide{沿用问题一的证据链，但应突出新增约束、模型升级和关键结果，不必机械重复相同小节。}
+\subsection{模型改进与新增约束}
+\placeholder{填写模型改进、公式推导和参数定义}
+\subsection{算法、结果与检验}
+\placeholder{填写求解过程、定量结果、基线比较和本问结论}
+
+\section{问题三的模型建立与求解}
+\guide{针对决策、预测或优化任务写清目标、约束、方法、结果和验证；按实际问题数增删。}
+\subsection{模型建立与求解}
+\placeholder{填写模型、算法和实现细节}
+\subsection{结果解释与本问检验}
+\placeholder{填写最优方案、预测区间或排序结果及稳定性证据}
+
+\section{综合检验与稳健性分析}
+\guide{按需保留。若检验已在各问完成且没有跨问参数，可删除本章；若核心参数贯穿全文，集中展示更清晰。}
+
+\subsection{模型有效性与基线对比}
+\placeholder{与解析解、已知事实、题设样例、简单基线或替代模型比较}
+
+\subsection{敏感性与鲁棒性}
+\placeholder{扰动关键参数、数据或初值，报告输出变化率、置信区间或稳定区域}
+
+\subsection{误差来源与适用边界}
+\placeholder{区分数据误差、结构误差与数值误差，并说明模型何时失效}
+
+\section{结论与建议}
+\guide{用编号逐一对应题目要求，直接给最终答案；必要时给可执行建议。}
+\begin{enumerate}[label=（\arabic*）]
+  \item 问题一结论：……
+  \item 问题二结论：……
+  \item 问题三结论：……
+\end{enumerate}
+
+\section{模型评价、改进与推广}
+
+\subsection{模型优势与创新性}
+\guide{优势必须有证据，如更低误差、更少参数、更强可解释性、更快计算或更广适用范围。}
+
+\subsection{局限与改进方向}
+\guide{写具体限制、影响方向和可执行改进，不写“时间仓促”。}
+
+\subsection{推广与迁移}
+\guide{说明可迁移到何种对象、需替换哪些参数或约束、哪些前提必须重新验证。}
+
+% ==================== 参考文献 ====================
+\renewcommand{\refname}{参考文献}
+\begin{thebibliography}{99}
+  \bibitem{ref1} 作者. 题名[J]. 期刊名, 年, 卷(期): 起止页码.
+  \bibitem{ref2} 作者. 书名[M]. 版次. 出版地: 出版社, 年.
+  \bibitem{ref3} 机构或作者. 网页或数据集名称[EB/OL]. 发布日期[引用日期]. URL.
+\end{thebibliography}
+
+% ==================== 附录 ====================
+\clearpage
+\section*{附录}
+\addcontentsline{toc}{section}{附录}
+
+\subsection*{附录 A\quad 支撑材料文件清单}
+\guide{清单与最终提交压缩包逐项一致。若无支撑材料，写“本论文没有支撑材料”。}
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{0.96\textwidth}{c X X X}
+    \toprule
+    序号 & 文件名 & 用途/对应章节 & 运行环境 \\
+    \midrule
+    1 & …… & …… & …… \\
+    2 & …… & …… & …… \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection*{附录 B\quad 源程序代码}
+\guide{附录包含建模所用全部完整、可运行代码。若未使用程序，写“本论文没有用到程序”。}
+\begin{lstlisting}[style=cumcm,language=Python,caption={示例代码（提交前替换）}]
+def solve_model(data, params):
+    """Return model result and diagnostics."""
+    result = None
+    diagnostics = {}
+    return result, diagnostics
+\end{lstlisting}
+
+\subsection*{附录 C\quad 补充结果}
+\guide{放置不宜占用正文篇幅、但可复核结论的中间结果、完整参数表和补充图。}
+
+\end{document}

@@ -1,0 +1,541 @@
+高校应用数学学报
+2009, 24(4): 410-417
+一种多目标条件风险值数学模型
+蒋
+敏,
+孟志青
+(浙江工业大学经贸管理学院, 浙江杭州310023)
+摘
+要: 研究了一种多目标条件风险值(CVaR)数学模型理论. 先定义了一种多目标损
+失函数下的α-VaR和α-CVaR值, 给出了多目标CVaR最优化模型. 然后证明了多目标
+意义下的α-VaR和α-CVaR值的等价定理, 并且给出了对于多目标损失函数的条件风
+险值的一致性度量性质. 最后, 给出了多目标CVaR模型的近似求解模型.
+关键词: 条件风险值; 多目标CVaR模型; 损失函数; 风险度量
+中图分类号: F832
+文献标识码: A
+文章编号: 1000-4424(2009)04-0410-08
+§1
+引
+言
+现有的风险管理模型(如均值一方差模型, Downside-Risk的风险度量模型, CAPM模型,
+VaR模型和CVaR模型等)大多数是单目标模型, 但许多实际行业中, 如金融投资, 房地产投资和
+供应链中采购与库存管理的风险管理问题大多是多目标风险管理问题. 例如银行贷款组合投资
+问题, 银行在过去的几年内曾发放过几类贷款如商业投资, 住房, 汽车等, 它们还款随贷款时间
+利润不同, 银行记录了有客户不同贷款记录. 在未来一年里, 银行将如何制定新的贷款计划, 根
+据历史数据, 确定新的贷款发放计划, 即确定新的贷款量, 周期和相应贷款利率, 以达到最大利
+润, 最小的投资过剩和机会损失等目标. 又如在区域供电问题中, 供电局拥有了过去的不同用电
+记录, 如商业, 企业和居民使用的不同时期的用电量和价格数据, 在未来的一年内, 供电部门希
+望确定新的供电计划来提高用电效率和获得更多的利润, 由于电力紧张, 供电局需要确定在未来
+一年内不同时间段内给出不同的定价和供电量比例, 以达到利润最大, 供电过剩和不足等目标.
+再如商业企业中多产品采购计划问题, 企业拥有过去几年内的多种商品的销售记录, 该企业希望
+制定下一年度的采购计划, 为了避免采购过剩和销售机会损失, 该企业希望确定在未来的一段时
+间从不同的供应商处采购多种商品, 确定采购多产品最佳比例. 上述问题显然是类似的多目标
+风险决策问题. 然而, 还没有普遍适用的数学模型来解决这些问题.
+2000年至2002年Rockafellar和Uryasev等学者在风险管理VaR模型基础上提出了一种具有
+广泛适用性的条件风险值(CVaR)模型[1-4], CVaR模型具有良好的可计算性, 特别是证券组合投
+资的应用上表明了CVaR刻画风险比VaR更有效, 其理论出现后引起了风险管理领域的研究者
+收稿日期: 2008-10-29
+基金项目: 浙江省自然科学基金(Y606097;Y60860040)
+
+
+===PAGE===
+
+蒋
+敏等: 一种多目标条件风险值数学模型
+411
+广泛重视. 近几年CVaR模型理论与应用的研究取得了许多重要进展, 如Andrey等系统地获得
+了VaR和CVaR的许多性质[5], Trindade等给出了VaR和CVaR的概率分布下的比较[6], Csaba等
+提出了处理CVaR问题的两阶段模型的分解求解方法[7], Huang等发展了最坏情形下(worst-
+case)CVaR模型理论[8], 有效地应用在证券投资组合上. 以上的研究推动了CVaR的计算和理论
+发展. 近年来CVaR的应用研究在金融, 供电, 水利和商业等领域中, 如Jabr等适用CVaR模型用
+于供电定价[9], Norbert等将CVaR应用于动态资产和信用风险管理上[10], Mulvey等拓展CVaR模
+型应用到企业中的风险管理[11], Webby等人将CVaR水资源的管理与发展[12], Gotoh等建立了产
+品采购的CVaR报童模型[13], Zhou等还建立多产品采购的CVaR模型[14], Javier等也将CVaR用
+于电力市场上的风险管理上. 2002年以后国内许多学者发表了大量的CVaR理论与应用文
+章[15-22]. 已有的研究表明CVaR模型可以描述和解决许多领域里的风险管理问题, 而已有的各
+种领域的CVaR模型主要是单目标模型. 因此, 研究建立多目标CVaR模型的理论是一个重要的
+课题, 对于金融投资, 房地产投资和供应链中采购与库存管理等领域的多目标风险决策理论发展
+具有重要的意义.
+CVaR模型主要是由定义的α-VaR值函数, α-CVaR值函数和对应的CVaR最优化问题构
+成[1], 由于α-CVaR值函数(是一个非线性积分)一般很难直接计算, 所以对应的CVaR最优化问题
+也很难求解, 事实上, CVaR最优化问题是一个双层数学规划问题. 目前一般研究的方法是再定
+义另一个较容易计算的等价函数使得在一定条件下与α-CVaR值函数等价, 这就是等价定理, 如
+果等价定理成立, 那么由等价函数构成的优化问题就与原CVaR最优化问题等价, 这样求解一个
+较容易的等价优化问题, 就可以得到最优α-VaR值, α-CVaR值. 本文在文[23]的基础上定义了一
+个多目标CVaR数学模型, 主要证明了多目标CVaR模型的等价定理, 并给出了多目标CVaR数学
+模型的近似计算模型.
+§2 一种多目标CVaR数学模型
+假设存在与决策变量x ∈X⊂Rn相关的I个损失函数fi(x, ξi) ∈Rn × Rmi →R1, i = 1, 2,
+· · · , I, 并设它们是有下界的连续函数, ξi是一个连续型随机变量, 有密度函数pi(zi). 在金融市
+场中, 决策变量x可以表示为一个投资组合, X表示可能的投资组合的集合, ξi则表示市场中可能
+会影响到损失函数的随机因素. 设Ψi(x, ·)是fi(x, ξi)的分布函数:
+Ψi(x, yi) = P{fi(x, ξi) ≤yi} =
+∫
+fi(x,zi)≤yi
+pi(zi)dzi,
+i = 1, 2, · · · , I.
+(1)
+给出VaR值定义如下.
+定义2.1
+给定I个置信水平αi ∈(0, 1), i = 1, 2, · · · , I, 及决策变量x, 记
+y∗α(x) = (y∗
+1(x), y∗
+2(x), · · · , y∗
+I(x)) = min{(y1, y2, · · · , yI) | Ψi(x, yi) ≥αi, i = 1, 2, · · · , I}, (2)
+即不存在满足Ψi(x, yi) ≥αi, i = 1, 2, · · · , I的(y1, y2, · · · , yI)使得
+yi < y∗
+i (x),
+i = 1, 2, · · · , I,
+称y∗α(x)是在置信水平α = (α1, α2, · · · , αI)下决策x的一个α-VaR损失向量. 记所有的α-VaR损
+失向量构成的集合为E(α, x). 记
+y∗
+iαi(x) = min{yi | Ψi(x, yi) ≥αi},
+i = 1, 2, · · · , I,
+(3)
+称y∗
+iαi(x)是在置信水平αi下决策x的一个αi-VaR损失. 容易得到下面性质:
+
+
+===PAGE===
+
+412
+高校应用数学学报
+第24卷第4期
+性质2.1
+(1) (y∗
+1α1(x), y∗
+2α2(x), · · · , y∗
+IαI(x)) ∈E(α, x),
+(2) 任何一个(y∗
+1(x), y∗
+2(x), · · · , y∗
+I(x)) ∈E(α, x)中至少有一个y∗
+i (x)等于y∗
+iαi(x).
+注
+当I = 1, 上面的概念就是文[1]所定义的单损失α-VaR. 于是y∗α(x) 就表示在投资组
+合x下概率α所能保证的最小损失.
+为了讨论方便, 记权值集合
+Λ = {λ = (λ1, λ2, · · · , λI) | λi ∈[0, 1], i = 1, 2, · · · , I,
+I
+∑
+i=1
+λi = 1}.
+先定义基于权值的α-VaR损失值概念.
+定义2.2
+给定I个置信水平αi ∈(0, 1), i = 1, 2, · · · , I, 权值λ = (λ1, λ2, · · · , λI) ∈Λ, 及决
+策变量x, 如果
+y∗(x, λ) = (y∗
+1(x, λ), y∗
+2(x, λ), · · · , y∗
+I(x, λ))
+= min{y = (y1, · · · , yI) |
+I∑
+i=1
+λi(1 −αi)−1Ψi(x, yi) ≥
+I∑
+i=1
+λiαi(1 −αi)−1},
+(4)
+即不存在满足
+I∑
+i=1
+λi(1 −αi)−1Ψi(x, yi) ≥
+I∑
+i=1
+λiαi(1 −αi)−1的(y1, y2, · · · , yI)使得
+yi < y∗
+i (x, λ),
+i = 1, 2, · · · , I,
+则称y∗(x, λ)是在置信水平α下决策x基于权值λ的α-VaR损失值.
+当I = 1, 上面定义的α-VaR损失值也是单损失的α-VaR损失值, 因此仍是单损失时的推广.
+当α1 = α2 = · · · = αI = α时, (4)式成为
+y∗(x, λ) = min{y = (y1, y2, · · · , yI) |
+I
+∑
+i=1
+λiΨi(x, y) ≥α}.
+这时y∗(x, λ)为在同一个置信水平下的α-VaR损失值.
+性质2.2
+y∗(x, λ) ∈E(α, x), 即y∗(x, λ)是在置信水平α下决策x基于权值λ的α-VaR损失
+值也是在置信水平α下决策x的一个α-VaR损失向量.
+引入函数
+Φi,αi(x, yi) = (1 −αi)−1
+∫
+fi(x,zi)≥yi
+fi(x, zi)pi(zi)dzi,
+i = 1, 2, · · · , I.
+(5)
+进而引进CVaR值的概念如下.
+定义2.3
+给定I个置信水平αi ∈(0, 1), i = 1, 2, · · · , I, 及决策变量x, 称(Φ1,α1(x, y∗
+1(x)),
+Φ2,α2(x, y∗
+2(x)), · · · , ΦI,αI(x, y∗
+I(x)))是在置信水平(α1, α2, · · · , αI)下决策x的一个α-CVaR损
+失向量, 其中(y∗
+1(x), y∗
+1(x), · · · , y∗
+I(x))是在置信水平α下决策x的一个α-VaR损失向量.
+显然这也是文[2]中CVaR值的概念推广,
+(Φ1,α1(x, y∗
+1(x)), Φ2,α2(x, y∗
+2(x)), · · · , ΦI,αI(x, y∗
+I(x)))
+的含义是在给定的水平(α1, α2, · · · , αI)和投资组合x下对应的最小风险值的条件期望损失向量.
+为了计算每一个Φi,αi(x, y∗
+i (x)), 类似地定义损失函数:
+Fi,αi(x, yi) = yi + (1 −αi)−1
+∫
+zi∈Rm
+(fi(x, zi) −yi)+pi(zi)dzi,
+i = 1, 2, · · · , I.
+(6)
+
+
+===PAGE===
+
+蒋
+敏等: 一种多目标条件风险值数学模型
+413
+其中表示(fi(x, zi) −yi)+ = max{fi(x, zi) −yi, 0}. 当1 −αi = P{fi(x, ξ) ≥yi}时, 有
+Fi,αi(x, yi) = Φi,αi(x, yi).
+对i = 1, 2, · · · , I, 按定义(5), Φi,αi(x, y)表示了在给定的投资组合x于置信水平αi下, 损失
+超过了对应损失值y时的条件期望损失, 而Φi,αi(x, y∗
+i (x))的含义是在给定的投资组合x于置信水
+平αi下, 损失超过了对应的风险值y∗
+i (x)的条件期望损失值, 它刻画了投资组合x的风险程度, 这
+个值越小, 表明了风险程度越小. 因此Φi,αi(x, y∗
+i (x))的实际含义是在给定的投资组合x于置信
+水平αi下, 损失超过对应的最小风险值的条件期望损失值.
+以下均假设下面条件成立:
+P{fi(x, ξ) = y} =
+∫
+fi(x,z)=y
+pi(z)dz = 0,
+y ∈R,
+i = 1, 2, · · · , I.
+由定义2.1和文[1], 直接得到下面引理.
+引理2.1[1]
+函数Fi,αi(x, yi)关于yi是连续可微的凸函数, 并且
+min
+yi∈R Fi,αi(x, yi) = Φi,αi(x, y∗
+iαi(x)),
+(7)
+∂Fi,αi(x, yi)
+∂yi
+= (1 −αi)−1[Ψi(x, yi) −αi],
+i = 1, 2, · · · , I,
+其中y∗
+iαi(x)是在置信水平αi下决策x的一个α-VaR损失.
+对多损失的情形, 需要讨论在可行区域X中的最小α-CVaR损失向量, 即要使
+(Φ1,α1(x, y∗
+1(x)), Φ2,α2(x, y∗
+2(x)), · · · , ΦI,αI(x, y∗
+I(x)))
+在X上达到最小的x, 这是一个多目标决策α-CVaR问题:
+(P2-1)
+min
+(Φ1,α1(x, y∗
+1(x)), Φ2,α2(x, y∗
+2(x)), · · · , ΦI,αI(x, y∗
+I(x)))
+s.t.
+x ∈X.
+如果x∗是问题(P2-1)的弱Pareto有效解, 那么称
+(Φ1,α1(x∗, y∗
+1(x∗)), Φ2,α2(x∗, y∗
+2(x∗)), · · · , ΦI,αI(x∗, y∗
+I(x∗)))
+是在置信水平(α1, α2, · · · , αI)下决策x∗的一个弱Pareto-α-CVaR损失值, x∗称为弱Pareto-α-
+CVaR有效解, 把所有的弱Pareto-α-CVaR有效解构成的集合记为EC(α∗, y∗).
+我们知道Φi,αi(x, y∗
+i (x))的计算是比较困难的, 从而要求解(P2-1)也会是件困难的事情. 基
+于引理2.1, 考虑下面的多目标规划问题:
+(P2-2)
+min
+(F1,α1(x, y1), F2,α2(x, y2), · · · , FI,αI(x, yI))
+s.t.
+(y1, y2, · · · , yI) ∈RI, x ∈X.
+可以通过求解问题(P2-2)的Pareto有效解, 来得到问题(P2-1)的弱Pareto-α-CVaR有效解. 先证
+明下面的等价定理.
+定理2.1
+若(x, y1, y2, · · · , yI)是(P2-2)的一个Pareto有效解, 则x是弱Pareto-α-CVaR有效
+解. 如果对每一个i = 1, 2, · · · , I, argmin
+yi∈R Fi,αi(x, yi)是唯一的, 即问题min
+yi∈R Fi,αi(x, yi)有唯一的
+最优解, 那么(y1, y2, · · · , yI)是在置信水平(α1, α2, · · · , αI)下关于决策x的一个α-VaR损失值.
+证
+首先证明对于每一个i = 1, 2, · · · , I, yi是最优化问题
+min
+yi∈R Fi,αi(x, yi)
+
+
+===PAGE===
+
+414
+高校应用数学学报
+第24卷第4期
+的最优解. 如果存在某个j及yj不是最优解, 则存在y′
+j使得
+Fj,αj(x, y′
+j) < Fj,αj(x, yj),
+(8)
+选择点(x, y1, · · · , yj−1, y′
+j, yj+1, · · · , yI), 根据(8)知(x, y1, y2, · · · , yI)不是(P2-2)的一个Pareto
+有效解, 这与定理假设条件矛盾. 根据引理2.1知
+Fi,αi(x, yi) = Φi,αi(x, y∗
+i (x)),
+i = 1, 2, · · · , I,
+(9)
+其中(y∗
+1(x), y∗
+2(x), · · · , y∗
+I(x))是在置信水平(α1, α2, · · · , αI)下决策x的一个α-VaR损失值. 假
+设x不是弱Pareto-α-CVaR有效解, 存在x′ ∈X使得
+Φi,αi(x′, y∗
+i (x′)) < Φi,αi(x, y∗
+i (x)),
+i = 1, 2, · · · , I,
+(10)
+由(9)和(10)以及引理2.1有
+min
+yi∈R Fi,αi(x′, yi) = Φi,αi(x′, y∗
+i (x′)) < Fi,αi(x, yi),
+i = 1, 2, · · · , I,
+故由上式存在(y′′
+1, y′′
+2, · · · , y′′
+I )使得
+Fi,αi(x′, y′′
+i ) = min
+yi∈R Fi,αi(x′, yi) < Fi,αi(x, yi),
+i = 1, 2, · · · , I,
+据此, 我们知(x, y1, y2, · · · , yI)不是问题(P2-2)的一个Pareto有效解, 因此又得到一个矛盾. 所
+以x是弱Pareto-α-CVaR有效解.
+进一步, 如果问题min
+yi∈R Fαi(x, yi)有唯一的最优解, 显然有
+yi = y∗
+i (x),
+i = 1, 2, · · · , I,
+故(y1, y2, · · · , yI)是在置信水平(α1, α2, · · · , αI)下关于决策x的一个α-VaR损失值.
+基于以上定理, 考虑下面单目标规划问题:
+(P2-3)
+min
+I
+∑
+i=1
+λiFi,αi(x, yi)
+s.t.
+(y1, y2, · · · , yI) ∈RI, x ∈X.
+其中0 < λi < 1, i = 1, 2, · · · , I是给定的权值, 目标函数是(P2-2)中各目标的加权和. 对此, 有下
+面定理.
+定理2.2
+如果(x, y1, y2, · · · , yI)是问题(P2-3)的一个最优解, 则x是弱Pareto-α-CVaR有效
+解. 如果对每一个i = 1, 2, · · · , I, argmin
+yi∈R Fi,αi(x, yi)是唯一的, 那么(y1, y2, · · · , yI)是在置信水
+平α下决策x基于权值λ的α-VaR损失值.
+证
+如果(x, y1, y2, · · · , yI)是问题(P2-3)的一个最优解, 那么由多目标规划的理论可知它是
+问题(P2-2)的一个Pareto有效解, 再根据引理2.1得
+I
+∑
+i=1
+λi(1 −αi)−1(Ψi(x, yi) −αi) = 0.
+由定理2.1知结论成立.
+根据文[15]知道, 单目标的CVaR满足一致性, 即平移不变性, 正齐次性, 凸性等. 设Yi =
+fi(x, zi), 从(5)记ρ(Yi) = Φi,αi(x, y∗
+i (x)), i = 1, 2, · · · , I. 我们知道(ρ(Y1), ρ(Y2), · · · , ρ(YI))是在
+置信水平(α1, α2, · · · , αI)下决策x的一个α-CVaR损失向量.
+由文[15], 有下面性质.
+性质2.3
+设c是一个常数, i = 1, 2, · · · , I, 则
+
+
+===PAGE===
+
+蒋
+敏等: 一种多目标条件风险值数学模型
+415
+(1)平移不变性: ρ(Yi + c) = ρ(Yi) + c.
+(2)正齐次性: ρ(cYi) = cρ(Yi), c > 0.
+(3)凸性: ρ(cY ′
+i + (1 −c)Y ′′
+i ) ≤cρ(Y ′
+i ) + (1 −c)ρ(Y ′′
+i ), c ∈(0, 1).
+如果函数Fi,αi(¯x, yi)是yi的严格凸函数, 那么min
+yi∈R Fi,αi(¯x, yi)的最优解是唯一的.
+使用近似计算, 可以近似计算问题(P2-2)或(P2-3). 近似取一些样本点zi
+j, j = 1, 2, · · · , q,
+(1 −αi)−1
+∫
+z∈Rm
+(fi(x, z) −yi)+pi(z)dz ≈(1 −αi)−1q−1
+q
+∑
+j=1
+(fi(x, zi
+j) −yi)+,
+问题(P2-2)可以近似表示问题:
+(P2-2)′
+min
+(y1 +
+1
+q(1 −α1)
+q
+∑
+j=1
+(f1(x, z1
+j) −y1)+,
+· · · , yI +
+1
+q(1 −αI)
+q
+∑
+j=1
+(fI(x, zI
+j) −yI)+)
+s.t.
+(y1, y2, · · · , yI) ∈RI, x ∈X.
+对于给定的权值(λ1, λ2, · · · , λI), 问题(P2-3)可近似表示如下:
+(P2-3)′
+min
+I
+∑
+i=1
+λi{yi +
+1
+q(1 −αi)
+q
+∑
+j=1
+(fi(x, zi
+j) −yi)+}
+s.t.
+(y1, y2, · · · , yI) ∈RI, x ∈X,
+因此, 可以通过求解多目标非线性规划问题(P2-2)′或单目标规划(P2-3)′的解来得到原问题(P2-
+1)的近似解.
+§3 结束语
+在各种领域里的风险决策模型研究中, 一般都是通过使用损失函数来计算风险的大小, 函
+数损失值的大小对应了风险大小, 由于损失函数是由决策变量和随机变量(风险因素)构成, 一般
+情形都是求期望损失最小化模型的最优策略来规避风险, 这种方法在库存模型中普遍使用, 这需
+要对风险随机变量的概率分布完全知道, 但在实际问题中这样的概率分布有时是不知道的, 所
+以期望损失最小化模型的求解一直是困难问题. VaR值是在给定的概率水平和给定策略下寻求
+损失函数所保证最小的损失值来刻画给定策略的风险, VaR模型中也描述了损失函数不超过给
+定的损失值的概率分布, 不同的策略对应的VaR值可能不同, 它的缺陷是VaR值仅在一点上损
+失值来刻画整体风险, 这显然不够精确. 而CVaR值是在给定的概率水平寻求损失函数所有大
+于VaR值所保证期望损失来刻画策略的整体风险, 事实上CVaR累积了超过某个VaR值的所有损
+失, 因此, CVaR值比VaR值在刻画风险时更加全面, 其中CVaR的优越性, 表现在当分布不确定
+时, 通过随机变量已知的历史数据, 最优CVaR模型可以近似转化成线性规划求解, 并且可以同
+时得到最优VaR值, 即可以得到在置信水平下的风险损失大小的估计, 这是仅使用期望损失最小
+化模型得不到的, 这一点表现出比期望损失最小化模型更为优越. 所以, CVaR模型用于解决金
+融, 房地产, 供应链等风险决策问题时都具有良好的优越性.
+
+
+===PAGE===
+
+416
+高校应用数学学报
+第24卷第4期
+本文定义了具有广泛意义下的多目标VaR和CVaR值, 可以通过求解一个等价的非线性规划
+得到对应的VaR和CVaR值. 在应用CVaR模型解决金融, 房地产, 供应链等风险决策问题时, 主
+要存在以下几个不同点值得注意.
+(1)在建立实际模型时不同问题考虑的风险因素(随机变量)不同, 对应的随机变量的实际含
+义也是不同的, 例如证券市场的随机变量使用价格作为风险因素, 房地产市场的随机变量可以使
+用价格或需求作为风险因素, 库存问题的随机变量使用需求数量作为风险因素等.
+(2)不同实际问题的损失函数构造形式也是不同的. 例如证券组合投资中主要考虑收益损
+失, 房地产投资同时考虑过剩损失和不足损失, 库存问题也可同时考虑采购过剩损失和不足损
+失.
+(3)实际计算时, 不同问题的实际CVaR模型中随机变量样本取值方式是不同的. 例如证券
+市场的随机变量样本可考虑价格最高价与最低价的差, 房地产市场的随机变量样本值可以使用
+两段时间的价格差, 库存问题的随机变量样本可直接选用需求数量.
+参考文献:
+[1]
+Rockafellar R T, Uryasev S. Optimization of conditional value-at-risk[J]. J Risk, 2000, 2:
+21-41.
+[2]
+Fredrik A, Helmut M, Dan R, et al. Credit risk optimization with conditional value-at-risk
+criterion[J]. Math Prog, Ser B, 2001, 89: 273-291.
+[3]
+Tyrrell R, Rockafellar A, Stanislav U. Conditional value-at-risk for general loss distribu-
+tions[J]. J Banking & Finance, 2002, 26: 1443-1471.
+[4]
+Krokhmal P, Palmquist J, Uryasev S. Portfolio optimization with conditional value-at-risk
+objectives and constraints[J]. J Risk, 2002, 42(2): 124-129.
+[5]
+Andrey I K, Evgeniy A K. Analysis of criteria VaR and CVaR.[J] J Banking & Finance,
+2006, 30(2): 779-796.
+[6]
+Alexandre A T, Zhu Yun. Approximating the distributions of estimators of ﬁnancial risk
+under an asymmetric Laplace law[J]. Comput Statist Data Anal, 2007, 7(1): 3433-3447.
+[7]
+Csaba I F. Handling CVaR objectives and constraints in two-stage stochastic models[J].
+European J Oper Res, 2008, 191(3): 888-911.
+[8]
+Huang Dashan, Zhu Shushang, Fabozzi F J, et al. Portfolio selection with uncertain exit
+time: A robust CVaR approach[J]. J Econom Dynam Control, 2008, 32: 594-623.
+[9]
+Jabr R A. Robust self-scheduling under price uncertainty using conditional value-at-risk[J].
+IEEE Trans Power Systems, 2005, 20(4): 1852-1858.
+[10]
+Norbert J J, Gautam M, Stavros A Z. Integrating market and credit risk: A simulation and
+optimisation perspective[J]. J Banking & Finance, 2006, 30(2): 717-742.
+[11]
+Mulvey J M, Erkan H G. Applying CVaR for decentralized risk management of ﬁnancial
+companies[J]. J Banking & Finance, 2006, 30(2): 627-644.
+[12]
+Webby R B, Adamson P T, Boland J, et al. The Mekong-applications of value at risk (VaR)
+and conditional value at risk (CVaR) simulation to the beneﬁts, costs and consequences of
+water resources development in a large river basin[J]. Ecological Model, 2007, 201(1): 89-96.
+[13]
+Gotoh J, Takano Y. Newsvendor solutions via conditional value-at-risk minimization[J]. Eu-
+ropean J Oper Res, 2007, 179(1): 80-96.
+
+
+===PAGE===
+
+蒋
+敏等: 一种多目标条件风险值数学模型
+417
+[14]
+Zhou Yanju, Chen Xiaohong, Wang Zongrun. Optimal ordering quantities for multi-products
+with stochastic demand: Return-CVaR model[J]. Inter J Production Econom, 2008, 112(2):
+782-795.
+[15]
+García-González J, Parrilla E, Mateo A. Risk-averse proﬁt-based optimal scheduling of a
+hydro-chain in the day-ahead electricity market[J]. European J Oper Res, 2007, 181(3):
+1354-1369.
+[16]
+陈金龙, 张维. CVaR与投资组合优化统一模型[J].系统工程理论与实践, 2002, 11(1): 68-71.
+[17]
+林辉, 何建敏. VaR在投资组合应用中存在的缺陷与CVaR模型[J]. 财贸经济, 2003, 12: 46-49.
+[18]
+李选举, 高全胜. 交易费用和CVaR风险测度下的稳健投资组合[J]. 数量经济技术经济研究,
+2004, (8): 85-90.
+[19]
+陈剑利, 李胜宏. CVaR风险度量模型在投资组合中的运用[J]. 运筹与管理, 2004, 13(1): 95-99.
+[20]
+曲圣宁, 田新时. 投资组合风险管理中VaR模型的缺陷以及CVaR模型研究[J]. 统计与决策,
+2005, (10): 18-20.
+[21]
+刘小茂, 李楚霖. 风险资产组合的均值―CVaR有效前沿(Ⅱ)[J]. 管理工程学报, 2005, 19(1):
+1-6.
+[22]
+文凤华, 马超群, 陈牡妙, 等. 一致性风险价值及其算法与实证研究[J]. 系统工程理论与实践,
+2004, (10): 15-22.
+[23]
+Jiang Min, Hu Qiying, Meng Zhiqing. A method on solving multiple conditional value-at-risk
+based on weights[J]. Far East J Appl Math, 2004, 17(3): 359-369.
+A mathematical model of multiobjective conditional value-at-risk
+JIANG Min,
+MENG Zhi-qing
+(College of Business and Adiministration, Zhejiang University of Technology, Hangzhou 310023,
+China)
+Abstract: This paper studies the theory of a multiobjective conditional value-at-risk (CVaR)
+model. The concepts of α-VaR and α-CVaR based on multiobjective loss functions are introduced ﬁrst.
+The multiobjective CVaR optiaml model is obtained. Next, the equal theorem for α-VaR and α-CVaR
+is proved, and some properties of consistent measure for CVaR under multiobjective loss functions are
+given. Finally, an approximate model for solving multiobjective CVaR optiaml model is obtained.
+Keywords: conditional value-at-risk; multiobjective CVaR model; loss function; risk measure
+MR Subject Classiﬁcation: 65K05; 90C30

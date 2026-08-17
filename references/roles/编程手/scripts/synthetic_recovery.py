@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """合成数据回收检验（三明治架构）：正向生成 → 加噪注入 → 反向回收 → 报偏差。
 
-配合 `references/侦探协议.md` 的 P4 使用：
+配合分布式决策回路本地 P4（`../references/验证完备性.md` 第 7 类触发式验证）使用：
 当两种独立口径对同一量的估计分歧超过联合标准误的 2 倍
 （|d1-d2| > 2*sqrt(SEM1^2+SEM2^2)）时，强制触发本检验，验证主方法在
 「已知真值」条件下是否无偏。
@@ -260,7 +260,7 @@ def add_noise(reflectance: np.ndarray, snr_db: float, rng: np.random.Generator):
 
 
 def discordance_trigger(d1: float, sem1: float, d2: float, sem2: float):
-    """侦探协议 P4 触发：|d1−d2| > 2·√(SEM1²+SEM2²)。"""
+    """本地 P4 触发（口径分歧）：|d1−d2| > 2·√(SEM1²+SEM2²)。"""
     threshold = 2.0 * np.sqrt(sem1**2 + sem2**2)
     return bool(abs(d1 - d2) > threshold), float(threshold)
 
@@ -427,7 +427,7 @@ def run_demo(seed: int = 7, snr_db: float = 50.0, d_true: float = 8100.0,
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="合成数据回收检验：验证参数反演/估计算法无偏性（侦探协议 P4）")
+        description="合成数据回收检验：验证参数反演/估计算法无偏性（本地 P4）")
     parser.add_argument("--demo", action="store_true",
                         help="跑一次薄膜厚度反演的三明治演示")
     parser.add_argument("--seed", type=int, default=7)

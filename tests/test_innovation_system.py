@@ -97,6 +97,36 @@ class InnovationAuditTests(unittest.TestCase):
             report = innovation_audit.audit_manifest(self.write_manifest(root, [item]), root)
         self.assertFalse(report["ok"])
 
+    def test_high_competitive_candidate_cannot_be_dropped_without_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            item = base_item(
+                status="DROPPED",
+                competitive_relevance="high",
+                drop_reason="实现复杂，暂不采用",
+            )
+            report = innovation_audit.audit_manifest(self.write_manifest(root, [item]), root)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("高竞争价值候选" in issue["message"] for issue in report["issues"]))
+
+    def test_high_competitive_candidate_accepts_prototype_drop_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evidence = root / "candidate.json"
+            evidence.write_text("{}\n", encoding="utf-8")
+            item = base_item(
+                status="DROPPED",
+                competitive_relevance="high",
+                drop_reason="公平原型被 incumbent 支配",
+                drop_evidence={
+                    "kind": "prototype",
+                    "summary": "相同预算下目标更差",
+                    "evidence_files": ["candidate.json"],
+                },
+            )
+            report = innovation_audit.audit_manifest(self.write_manifest(root, [item]), root)
+        self.assertTrue(report["ok"], report["issues"])
+
     def test_adopted_item_requires_real_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

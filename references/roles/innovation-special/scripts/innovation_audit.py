@@ -12,6 +12,8 @@ from typing import Any
 
 
 VALID_STATES = {"HYPOTHESIS", "PROTOTYPED", "VERIFIED", "ADOPTED", "DROPPED"}
+VALID_COMPETITIVE_RELEVANCE = {"high", "medium", "low"}
+VALID_DROP_EVIDENCE = {"prototype", "hard_constraint"}
 VALID_TYPES = {
     "problem_reframing",
     "model_simplification",
@@ -243,12 +245,15 @@ def audit_manifest(manifest_path: str | Path, project_root: str | Path) -> dict[
 
         status = str(item.get("status", "")).upper()
         innovation_type = str(item.get("innovation_type", "")).strip()
+        competitive_relevance = str(item.get("competitive_relevance", "")).strip().lower()
         if status not in VALID_STATES:
             issues.append({"severity": "FAIL", "message": f"{label} 状态无效：{status}"})
             continue
         counts[status] += 1
         if innovation_type not in VALID_TYPES:
             issues.append({"severity": "FAIL", "message": f"{label} innovation_type 无效：{innovation_type}"})
+        if competitive_relevance and competitive_relevance not in VALID_COMPETITIVE_RELEVANCE:
+            issues.append({"severity": "FAIL", "message": f"{label} competitive_relevance 无效：{competitive_relevance}"})
 
         paper_claim = str(item.get("paper_claim", ""))
         if status == "HYPOTHESIS" and paper_claim:
@@ -258,6 +263,20 @@ def audit_manifest(manifest_path: str | Path, project_root: str | Path) -> dict[
                 issues.append({"severity": "FAIL", "message": f"{label} DROPPED 缺少 drop_reason"})
             if paper_claim:
                 issues.append({"severity": "FAIL", "message": f"{label} DROPPED 不得保留 paper_claim"})
+            if competitive_relevance == "high":
+                drop_evidence = item.get("drop_evidence")
+                if not isinstance(drop_evidence, dict):
+                    issues.append({
+                        "severity": "FAIL",
+                        "message": f"{label} 高竞争价值候选不得无证据 DROPPED；预算不足时保留 HYPOTHESIS 并登记未探索前沿",
+                    })
+                else:
+                    if drop_evidence.get("kind") not in VALID_DROP_EVIDENCE:
+                        issues.append({"severity": "FAIL", "message": f"{label} drop_evidence.kind 必须为 prototype 或 hard_constraint"})
+                    if not _nonempty(drop_evidence, "summary"):
+                        issues.append({"severity": "FAIL", "message": f"{label} drop_evidence 缺少 summary"})
+                    for error in _check_files(root, drop_evidence.get("evidence_files"), "drop_evidence.evidence_files"):
+                        issues.append({"severity": "FAIL", "message": f"{label} {error}"})
 
         if status == "PROTOTYPED":
             if not (_nonempty(item, "code_entry") or _nonempty(item, "proof_file")):

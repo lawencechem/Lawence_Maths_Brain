@@ -14,7 +14,7 @@
 | 阶段 | 入口 | 固定交付物 |
 |---|---|---|
 | 建模分析 | `roles/建模手/SKILL.md` | `题目分析报告.md`、`术语表格.md` |
-| 代码实现 | `roles/编程手/SKILL.md` | Python/MATLAB 求解代码、结果表格、创新证据清单、候选证据池、图表论证清单、复现清单 |
+| 代码实现 | `roles/编程手/SKILL.md` | Python/MATLAB 求解代码、结果表格、创新证据清单、条件触发的竞争性搜索账本、候选证据池、图表论证清单、复现清单 |
 | 论文撰写 | `roles/论文手/SKILL.md` | 默认交付 `完整论文.docx`；用户显式要求时同时交付 LaTeX 源码项目与编译 PDF |
 
 
@@ -28,6 +28,7 @@
 | 物理几何简化与证明 | `roles/innovation-special/references/物理几何简化.md` | 物理或几何候选 |
 | 求解创新路由 | `roles/innovation-special/references/求解创新路由.md` | 算法简化或求解改进 |
 | 创新证据协议 | `roles/innovation-special/references/创新证据协议.md` | 原型、P2、W1、W2 |
+| 竞争型问题协议 | `竞争型问题协议.md` | 逐题分类、内部标尺、挑战预算、incumbent 与停止证书 |
 | 验证完备性（风险驱动） | `roles/编程手/references/验证完备性.md` | 编程阶段 |
 | 发散—收敛温度策略（提示词级调数） | `温度策略.md` | 建模手发散 / 编程手求解 / 论文写作 |
 | 评分导向自检 | `roles/论文手/references/评分导向自检.md` | 论文阶段（复杂题必做） |
@@ -46,6 +47,7 @@
 | 图型选择与科研绘图避坑 | `../tools/figure/references/chart-types/chart_selection.md` |
 | Subagent 调度与阶段质检 | `Subagent调度.md` |
 | 创新证据审计 | `roles/innovation-special/scripts/innovation_audit.py` |
+| 竞争性搜索审计 | `roles/innovation-special/scripts/challenge_audit.py` |
 | 论文结构 | `roles/论文手/references/章节模板.md` |
 | Word 格式 | `roles/论文手/references/论文格式规范.md` |
 | LaTeX 格式 | `roles/论文手/references/LaTeX格式规范.md` |

@@ -7,7 +7,7 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 ## 开始门禁
 
-开始写作前先在进度更新中报告输入检查结果。题目、两个建模交付物、可运行代码、实际结果表格、`results/创新证据清单.json`、`results/图表论证清单.json` 或已核验文献任一缺失时，回退补齐，不要直接写论文。创新清单允许 `items` 为空；图表清单存在 `PENDING_RENDER` 时可以规划正文，但不得通过 `W1/W2` 或交付最终论文。
+开始写作前先在进度更新中报告输入检查结果。题目、两个建模交付物、可运行代码、实际结果表格、`results/创新证据清单.json`、`results/图表论证清单.json` 或已核验文献任一缺失时，回退补齐，不要直接写论文。创新清单允许 `items` 为空；若题目分析报告存在 `competitive` 子问题，`results/竞争性搜索账本.json` 也是必需输入。图表清单存在 `PENDING_RENDER` 时可以规划正文，但不得通过 `W1/W2` 或交付最终论文。
 
 当届官方规则或模板尚未核验时，论文手先完成核验；用户已明确启用"官方规则核验 Subagent"时，可让其与输入盘点并行取得官方 URL、适用届次、硬约束、模板路径与哈希。无论是否启用可选 Subagent，论文构建都必须等待规则核验完成。
 
@@ -51,8 +51,8 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 ## 执行顺序
 
-1. 读取题目、`题目分析报告.md`、`术语表格.md`、`results/创新证据清单.json`、`results/图表论证清单.json`、全部真实运行表格、图和代码。
-2. 先运行创新审计，只允许把 `ADOPTED` 项写成创新；`HYPOTHESIS/PROTOTYPED` 只能留在内部过程，`VERIFIED` 可作为普通方法证据但不得自动进入摘要。再建立内部 Claim-Evidence 映射和论文大纲，为每个子问题列出核心主张及其公式、结果表、图、代码输出或已核验文献；逐项决定 `KEEP/MERGE/APPENDIX/DROP`。每幅 `KEEP` 图必须具有图前引入、章节落点、图后观察和图后推论。缺证据时回退到建模手或编程手，禁止编造。
+1. 读取题目、`题目分析报告.md`、`术语表格.md`、`results/创新证据清单.json`、条件触发的 `results/竞争性搜索账本.json`、`results/图表论证清单.json`、全部真实运行表格、图和代码。
+2. 先运行创新审计；存在竞赛型子问题时再运行挑战审计。只允许把 `ADOPTED` 项写成创新；`HYPOTHESIS/PROTOTYPED` 只能留在内部过程，`VERIFIED` 可作为普通方法证据但不得自动进入摘要。竞赛型只有 `PROVEN_OPTIMAL` 可写“最优”，其他停止形态统一写“当前最好已知方案”，并披露 gap、预算停止或未探索前沿。再建立内部 Claim-Evidence 映射和论文大纲，为每个子问题列出核心主张及其公式、结果表、图、代码输出或已核验文献；逐项决定 `KEEP/MERGE/APPENDIX/DROP`。
 3. 在开始长篇正文和双格式排版前，派发独立质检 Subagent 执行 `W1` 证据大纲门禁；未返回 `PASS` 不得先写后补。
 4. 按官方结构写完整正文，引用由双引擎搜索结果和原始出版页面核验。
 5. 默认先确定同一份正文、数据、图表和参考文献，再生成 Word；用户显式要求 LaTeX 时同时生成 LaTeX，禁止两份论文出现不同结论。
@@ -62,8 +62,8 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 ## 阶段内独立门禁
 
-- `W1`：质检 Subagent 核对每个必须回答的结论类型都有精确证据路径，摘要拟用关键数值与结果表一致，图表、公式和引用都有章节落点；创新表述只来自 `ADOPTED` 项，代码、证明、结果和失效边界可追溯，不把计划验证或历史案例写成已完成。每幅 `KEEP` 图形成“图前问题或判断依据→图中证据→图后观察与推论”闭环，不存在 `PENDING_RENDER`。用户显式要求 LaTeX 时，Word 与 LaTeX 共用同一证据源。证据大纲只保留在内部检查中，不新增固定交付物。
-- `W2`：用户要求的全部格式冻结且各自确定性命令全部返回 0 后，质检 Subagent 核对当届规则、主张—证据、数值与单位、图表引用、文献和实际渲染效果；同时生成两种格式时再检查 Word/LaTeX 一致性，并核对模型来源自洽（`M0-2`：来源论证、奥卡姆比较、窗口交叉核验、参数文献对照）。失败时精确到页码、章节、命令或来源并返回对应角色。
+- `W1`：质检 Subagent 核对每个必须回答的结论类型都有精确证据路径，摘要拟用关键数值与结果表一致，图表、公式和引用都有章节落点；创新表述只来自 `ADOPTED` 项，代码、证明、结果和失效边界可追溯，不把计划验证或历史案例写成已完成。对竞赛型核对 incumbent、标尺和停止证书的证据路径，并拦截无 `PROVEN_OPTIMAL` 证书的“最优”表述。每幅 `KEEP` 图形成“图前问题或判断依据→图中证据→图后观察与推论”闭环，不存在 `PENDING_RENDER`。
+- `W2`：用户要求的全部格式冻结且各自确定性命令全部返回 0 后，质检 Subagent 核对当届规则、主张—证据、数值与单位、图表引用、文献和实际渲染效果；同时生成两种格式时再检查 Word/LaTeX 一致性，并核对模型来源自洽（`M0-2`）和竞赛型结论措辞（本地 C3）。失败时精确到页码、章节、命令或来源并返回对应角色。
 
 两次门禁均按 `../../../references/Subagent调度.md` 返回证据；正文、数据、图表或规则发生实质变化时重跑受影响门禁。
 
@@ -76,6 +76,12 @@ python "<SKILL_ROOT>/references/roles/innovation-special/scripts/innovation_audi
 python "<SKILL_ROOT>/tools/docx/scripts/paper_format.py" validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数>
 python "<SKILL_ROOT>/tools/docx/scripts/office/validate.py" "<PROJECT_ROOT>/完整论文.docx"
 python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJECT_ROOT>/完整论文.docx"
+```
+
+存在竞赛型子问题时，在文档构建命令前追加：
+
+```powershell
+python "<SKILL_ROOT>/references/roles/innovation-special/scripts/challenge_audit.py" "<PROJECT_ROOT>/results/竞争性搜索账本.json" --project-root "<PROJECT_ROOT>" --questions <竞赛型题号...> --strict
 ```
 
 最后一条仅适用于由 `equations.py generate/convert-latex` 生成的 DOCX；若 Word 由 `paper_format.py` 直接构建，则改为核对其自身质量报告和复现清单。交付 LaTeX 时依次运行：
@@ -106,6 +112,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT
 | 组织与核验参考文献 | `references/文献规范.md`、`../../../tools/paper_search/SKILL.md` |
 | 评分导向自检（复杂题必做） | `references/评分导向自检.md` |
 | 创新证据与克制表达 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新证据协议.md` |
+| 竞赛型结果、停止证书和最优措辞 | `../../竞争型问题协议.md` |
 | 交付前 | `references/自审框架.md` |
 | 阶段内独立验收 | `../../../references/Subagent调度.md` |
 

@@ -31,6 +31,41 @@ def base_item(**updates):
     return item
 
 
+def verified_geometry_item(root: Path) -> dict:
+    code = root / "model.py"
+    proof = root / "proof.md"
+    result = root / "result.json"
+    code.write_text("def reduce_axisymmetry():\n    return 0\n", encoding="utf-8")
+    proof.write_text("# 轴对称映射证明\n", encoding="utf-8")
+    result.write_text("{\"error\": 0}\n", encoding="utf-8")
+    return base_item(
+        status="VERIFIED",
+        innovation_type="geometric_simplification",
+        code_entry="model.py:reduce_axisymmetry",
+        reproduce_command="python model.py",
+        evidence_files=["result.json", "proof.md"],
+        verification={
+            "kind": "exact_equivalence",
+            "baseline": "三维轴对称模型",
+            "metric": "判定量差值",
+            "result": "差值为 0",
+            "limitations": "只适用于轴对称几何",
+        },
+        simplification={
+            "original_model": "三维轴对称实体",
+            "decision_quantity": "截面半径",
+            "preserved_property": "旋转对称下的径向距离",
+            "discarded_effect": "非轴对称扰动",
+            "mapping": "映射到母线平面",
+            "proof_level": "G1",
+            "proof_file": "proof.md",
+            "error_or_bound": "精确等价，误差为 0",
+            "counterexample_test": "非轴对称形状不适用",
+            "failure_condition": "旋转对称性破坏",
+        },
+    )
+
+
 class InnovationAuditTests(unittest.TestCase):
     def write_manifest(self, root: Path, items):
         results = root / "results"
@@ -72,40 +107,23 @@ class InnovationAuditTests(unittest.TestCase):
     def test_verified_geometry_requires_and_accepts_proof_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            code = root / "model.py"
-            proof = root / "proof.md"
-            result = root / "result.json"
-            code.write_text("def reduce_axisymmetry():\n    return 0\n", encoding="utf-8")
-            proof.write_text("# 轴对称映射证明\n", encoding="utf-8")
-            result.write_text("{\"error\": 0}\n", encoding="utf-8")
-            item = base_item(
-                status="VERIFIED",
-                innovation_type="geometric_simplification",
-                code_entry="model.py:reduce_axisymmetry",
-                reproduce_command="python model.py",
-                evidence_files=["result.json", "proof.md"],
-                verification={
-                    "kind": "exact_equivalence",
-                    "baseline": "三维轴对称模型",
-                    "metric": "判定量差值",
-                    "result": "差值为 0",
-                    "limitations": "只适用于轴对称几何",
-                },
-                simplification={
-                    "original_model": "三维轴对称实体",
-                    "decision_quantity": "截面半径",
-                    "preserved_property": "旋转对称下的径向距离",
-                    "discarded_effect": "非轴对称扰动",
-                    "mapping": "映射到母线平面",
-                    "proof_level": "G1",
-                    "proof_file": "proof.md",
-                    "error_or_bound": "精确等价，误差为 0",
-                    "counterexample_test": "非轴对称形状不适用",
-                    "failure_condition": "旋转对称性破坏",
-                },
-            )
+            item = verified_geometry_item(root)
+            item["parameter_rationale"] = {
+                "physical_meaning": "未引入无文献依据的自由参数",
+                "residual_contribution": "不适用（无自由参数）",
+                "lower_level_explanation": "不适用（无自由参数）",
+                "degeneracy_check": "不适用（无自由参数）",
+            }
             report = innovation_audit.audit_manifest(self.write_manifest(root, [item]), root)
         self.assertTrue(report["ok"], report["issues"])
+
+    def test_verified_geometry_without_parameter_rationale_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            item = verified_geometry_item(root)
+            report = innovation_audit.audit_manifest(self.write_manifest(root, [item]), root)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("parameter_rationale" in issue["message"] for issue in report["issues"]))
 
     def test_exact_problem_rejects_default_multi_solver_innovation(self):
         with tempfile.TemporaryDirectory() as tmp:

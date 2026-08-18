@@ -69,6 +69,13 @@ UNCERTAINTY_FIELDS = (
     "evaluation_method",
     "limitations",
 )
+PARAMETER_RATIONALE_TYPES = SIMPLIFICATION_TYPES | {"model_structure"}
+PARAMETER_RATIONALE_FIELDS = (
+    "physical_meaning",
+    "residual_contribution",
+    "lower_level_explanation",
+    "degeneracy_check",
+)
 COMPLETION_WORDS = ("本文提出", "验证表明", "显著提升", "证明了", "优于")
 
 
@@ -175,6 +182,17 @@ def _check_uncertainty(item: dict[str, Any]) -> list[str]:
         f"uncertainty_contract 缺少 {field}"
         for field in UNCERTAINTY_FIELDS
         if not _nonempty(contract, field)
+    ]
+
+
+def _check_parameter_rationale(item: dict[str, Any]) -> list[str]:
+    rationale = item.get("parameter_rationale")
+    if not isinstance(rationale, dict):
+        return ["引入自由参数但缺少 parameter_rationale 对象（本地 P10 四问）"]
+    return [
+        f"parameter_rationale 缺少 {field}"
+        for field in PARAMETER_RATIONALE_FIELDS
+        if not _nonempty(rationale, field)
     ]
 
 
@@ -293,6 +311,13 @@ def audit_manifest(manifest_path: str | Path, project_root: str | Path) -> dict[
             related = item.get("related_questions")
             if not isinstance(related, list) or len({str(q).strip() for q in related if str(q).strip()}) < 2:
                 issues.append({"severity": "FAIL", "message": f"{label} cross_question 至少关联两个不同子问题"})
+
+        if status in {"VERIFIED", "ADOPTED"} and innovation_type in PARAMETER_RATIONALE_TYPES:
+            for error in _check_parameter_rationale(item):
+                issues.append({"severity": "FAIL", "message": f"{label} {error}"})
+        elif status in {"VERIFIED", "ADOPTED"} and isinstance(item.get("parameter_rationale"), dict):
+            for error in _check_parameter_rationale(item):
+                issues.append({"severity": "FAIL", "message": f"{label} {error}"})
 
     return {
         "ok": not any(issue["severity"] == "FAIL" for issue in issues),

@@ -250,6 +250,15 @@ def _document_texts(doc):
     for table in doc.tables:
         for row in table.rows:
             texts.extend(cell.text.strip() for cell in row.cells if cell.text.strip())
+    # OMML 公式文本（<m:t>）不计入 python-docx 的 paragraph.text，与 LaTeX 侧
+    # 内容计数（公式内的字母/数字计入字词单位）保持一致，故一并纳入篇幅统计。
+    math_texts = []
+    for omath in doc._element.findall(".//" + qn("m:oMath")):
+        part = "".join(t.text or "" for t in omath.iter(qn("m:t"))).strip()
+        if part:
+            math_texts.append(part)
+    if math_texts:
+        texts.append(" ".join(math_texts))
     return texts
 
 

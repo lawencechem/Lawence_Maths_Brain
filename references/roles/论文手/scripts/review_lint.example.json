@@ -1,0 +1,51 @@
+{
+  "_说明": "论文终审 lint 项目配置模板。复制本文件到 <PROJECT_ROOT>/review_lint.json 后按本题改写。四条铁律：① 任何配置项（anchors/claims/judgements）在正文 0 命中都会 FAIL（覆盖闸）——锚点/声称正则必须真正匹配本题正文，复制不改会 FAIL，这是故意的，逼你把正则改成对题；② 所有配置检查都跑在『剥掉数据表与 includegraphics 参数后的正文』上，表格、公式、图片参数里的数字不参与匹配；③ anchors/claims/judgements 三类可只填本题需要的，未填的类型不运行；但只填了至少一类时，--demo 才会注入对应缺陷自证命中，所以写完配置先跑一遍 --demo；④ 配置值优先从 results 读真值（file+field），不要硬编码 value，硬编码值会随 results 漂移而失真。空配置合法（只跑内置 C6a/C6b/C1 孤儿数字），但会漏掉本题专属的口径锚点。运行命令：python \"<SKILL_ROOT>/references/roles/论文手/scripts/review_lint.py\" --paper \"<PROJECT_ROOT>/完整论文.docx 或 完整论文-LaTeX/main.tex\" --results \"<PROJECT_ROOT>/results\" --config \"<PROJECT_ROOT>/review_lint.json\"，退出码非 0 即 FAIL。",
+
+  "ignore_number_contexts": [],
+  "_ignore_number_contexts_说明": "C1 孤儿数字的上下文白名单（子串匹配，出现在数字附近即豁免）。典型用途：数字恒带单位而 results 存的是另一量纲时放单位词，或『第 N 步』这类序号。留空数组 = 不做上下文豁免。",
+
+  "ignore_numbers": [],
+  "_ignore_numbers_说明": "C1 孤儿数字的精确值白名单。仅当某个正文数字确实在 results 找不到同源但必须保留时用，例如通用常数 0.5、1.0、360。留空数组 = 不豁免任何值。",
+
+  "anchors": [
+    {
+      "_说明": "C1 关键口径锚点：论文关键声称值 vs results 真值。pattern 必须匹配正文中含数值的声称句（匹配发生在剥表后的正文上）；真值两种给法：优先 file+field 从 results 读，缺 file 或字段不存在时报『无法取得真值』；也可 value 硬编码（不推荐）。tol 为相对容差，缺省用命令行 --tol（默认 0.02）。pattern 里的正则转义序列（如反斜杠加 d、反斜杠加点、反斜杠加 s）在 JSON 文本中必须写成双份，JSON 解码会吃一层——照抄下方实际值。",
+      "name": "初始最大偏差",
+      "pattern": "(?:初始最大偏差|最大径向偏差)[^。]{0,12}?(\\d+(?:\\.\\d+)?)[$~]*\\s*m",
+      "file": "q3_results.json",
+      "field": "S2b_initial_max_dev_m",
+      "tol": 0.015
+    },
+    {
+      "_说明": "真值已知且无 results 同源文件时的最小形态：name + pattern + value 即可。",
+      "name": "最小形态示例（硬编码值）",
+      "pattern": "设计间距取[^。]{0,8}?(\\d+(?:\\.\\d+)?)\\s*km",
+      "value": 12.5
+    }
+  ],
+
+  "claims": [
+    {
+      "_说明": "C5 表述↔实现：论文声称的算法行为 vs 实现/结果。pattern 匹配声称句；extract 的捕获组从声称句中抽取数字集合；expected 是期望数字集合（多值用列表，如首轮参考集合）；两集合不相等即 FAIL。extract 注意：声称句若含恒定锚（如 FY01 恒在），用字符类排除，如 FY0([2-9])。期望值若是单个数值，可用 expected_file+expected_field 从 results 读；多值集合只能用 expected 字面量。",
+      "name": "首轮参考集合",
+      "pattern": "(首轮取|首轮选)[^。；]*",
+      "extract": "FY0([2-9])",
+      "expected": [2, 4],
+      "what": "S2b 首轮圆周参考 FY02/FY04（此说明会出现在 FAIL 消息里）"
+    }
+  ],
+
+  "judgements": [
+    {
+      "_说明": "C1① 判据方向：正文对具体配置断言『病态/适定』↔ 结果文件条件数。angle_regex 在正文找『θ=NN』断言；LaTeX 下正文是 θ 的字面反斜杠命令，JSON 里必须写四份反斜杠接 theta（解码后剩两份），照抄下方实际值即可。cond_file 是方向扫描结果文件（首列为角度，条件数列由 angle_col/cond_col 指定）；threshold 之上判病态；sick_words 命中且该处实际适定、或 ok_words 命中且该处实际病态，即 FAIL。",
+      "name": "方向病态/适定判据",
+      "cond_file": "q1_1_gdop.csv",
+      "angle_col": 0,
+      "cond_col": 2,
+      "threshold": 1000,
+      "sick_words": ["病态", "退化", "无法定位", "不可定位", "不能定位", "定位失效"],
+      "ok_words": ["适定"],
+      "angle_regex": "(?:\\\\theta|θ)\\s*[=≈~]\\s*(\\d+(?:\\.\\d+)?)"
+    }
+  ]
+}

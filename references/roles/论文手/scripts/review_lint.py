@@ -56,7 +56,10 @@ def _strip_tables(s):
 
 
 def _strip_layout_args(s):
-    return re.sub(r'\\includegraphics\[[^]]*\]\{[^}]*\}', ' ', s)
+    # 用等量换行占位，保证剥掉 includegraphics 参数后行号不变
+    def _repl(m):
+        return '\n' * m.group(0).count('\n')
+    return re.sub(r'\\includegraphics\[[^]]*\]\{[^}]*\}', _repl, s)
 
 
 def _nums(s):
@@ -83,6 +86,11 @@ def _load_res_nums(results_dir):
 
 def _ln(text, m):
     return text[:m.start()].count('\n') + 1
+
+
+def _plain(text):
+    # 供 C1/C5/C1① 检查共用：剥数据表与 includegraphics 参数，只对正文叙述文本做匹配
+    return _strip_layout_args(_strip_tables(text))
 
 
 def _ctx(text, m, w=18):
@@ -175,7 +183,7 @@ def check_orphans(text, res_nums, tol, config, relax):
     issues = []
     ignore_ctx = config.get('ignore_number_contexts', [])
     ignore_vals = set(float(x) for x in config.get('ignore_numbers', []))
-    prose = _strip_layout_args(_strip_tables(text))
+    prose = _plain(text)
     for m in re.finditer(r'(?<![A-Za-z_])\d+\.\d+(?:[eE][+-]?\d+)?', prose):
         v = float(m.group())
         if v in ignore_vals:
@@ -190,9 +198,10 @@ def check_orphans(text, res_nums, tol, config, relax):
 
 def check_anchors(text, config, results_dir, tol):
     issues, coverage = [], []
+    plain = _plain(text)
     for a in config.get('anchors', []):
         pat = a['pattern']
-        matches = list(re.finditer(pat, text))
+        matches = list(re.finditer(pat, plain))
         coverage.append((a.get('name', pat[:20]), len(matches)))
         want = a.get('value')
         if want is None and a.get('file'):
@@ -209,14 +218,15 @@ def check_anchors(text, config, results_dir, tol):
             v = float(mm.group(1))
             if abs(v - want) / max(abs(want), 1e-9) > atol:
                 issues.append(('C1 口径锚点与结果不符',
-                               f'L{_ln(text, m)}: {a.get("name")} "{_ctx(text, m)}" 声称 {v:g}，真值 {want:g}'))
+                               f'L{_ln(plain, m)}: {a.get("name")} "{_ctx(plain, m)}" 声称 {v:g}，真值 {want:g}'))
     return issues, coverage
 
 
 def check_claims(text, config, results_dir):
     issues, coverage = [], []
+    plain = _plain(text)
     for c in config.get('claims', []):
-        matches = list(re.finditer(c['pattern'], text))
+        matches = list(re.finditer(c['pattern'], plain))
         coverage.append((c.get('name', c['pattern'][:20]), len(matches)))
         want = c.get('expected')
         if want is None and c.get('expected_file'):
@@ -231,7 +241,7 @@ def check_claims(text, config, results_dir):
                 continue
             if got != want_nums:
                 issues.append(('C5 表述与实现不符',
-                               f'L{_ln(text, m)}: {c.get("name")} 声称 {sorted(got)}，'
+                               f'L{_ln(plain, m)}: {c.get("name")} 声称 {sorted(got)}，'
                                f'实现/结果 {sorted(want_nums)}（{c.get("what", "")}）'))
     return issues, coverage
 
@@ -258,7 +268,7 @@ def check_judgements(text, config, results_dir):
         thresh = float(j.get('threshold', 1000.0))
         sick = tuple(j.get('sick_words', ['病态', '退化']))
         okw = tuple(j.get('ok_words', ['适定']))
-        plain = _strip_tables(text)
+        plain = _plain(text)
         candidates = 0
         for m in re.finditer(r'[^。；\n]+', plain):
             seg = m.group(0)

@@ -39,6 +39,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 7. 趋势、分布、误差、对比、收敛和敏感性等数据图加载 `../../../tools/figure/SKILL.md`；机理、几何、流程、架构和拓扑图加载 `../../../tools/diagram/SKILL.md`。NetworkX 只建立离散结构；连续二维/三维几何优先使用 GeoGebra Classic，无法自动渲染时输出逐行指令与生成说明，Matplotlib 作为自动后备。复杂判定/算法流程图（判定树、多分支判据、算法流程）优先使用 Mermaid，以 `.mmd` 为可编辑源、渲染失败时交付源码与渲染说明；几何图不落入 Mermaid；MATLAB 不进入正式配图路由。
 8. Matplotlib 正式候选图使用 `../../../tools/figure/scripts/export_figure.py` 导出；GeoGebra 图按 `../../../tools/diagram/SKILL.md` 保存源文件、指令和图片。显式固定最终尺寸且禁用 `bbox_inches="tight"`。先运行 `check_figure.py`，再运行带 `--manifest` 和全部 `--questions` 的 `figure_audit.py --strict`；实际打开彩色 PNG 和灰度预览检查语义、层级、缺字、裁切、遮挡、颜色、尺度和面板一致性。有问题则改源文件或指令、重跑、重审，不能直接修改位图。
 9. 生成复现清单，并运行 `innovation_audit.py <创新证据清单> --project-root <PROJECT_ROOT> --strict`。存在竞赛型子问题时，再运行 `challenge_audit.py <竞争性搜索账本> --project-root <PROJECT_ROOT> --questions <竞赛型题号...> --strict`。任一审计失败时不得进入 `P2`；首个可行解或没有官方值不能替代挑战审计。
+9.5 交付物完成自检（P2 前必须全过，任一 FAIL 不得进入 `P2` 或交接）：存在竞赛型子问题时，账本每个子问题 `state == "CHALLENGE_CLOSED"` 且 `stop_certificate` 完整合法——结果未定前不得先写账本、遗留 `CHALLENGE_OPEN/PENDING` 半成品；`results/图表论证清单.json` 无 `PENDING_RENDER`，且每个 `KEEP` 条目在 `figures/` 有契约要求的实际文件；题目要求的结果文件（如 `result*.xlsx`）全部生成且结构符合模板；`results/复现清单.json` 的唯一复现命令覆盖**全部交付物生成链**（求解、结果表、图、清单），并记录关键交付物 SHA-256 供论文手核对。审计与自检通过后，把对应回执（含输入快照）随项目流转。若阶段因外部原因（权限拦截、会话中断、预算耗尽）未完成自检，退出前把未完成项写入 `PROJECT_ROOT/未完成项清单.md`（项 / 归属角色 / 原因 / 是否可代补），恢复会话时先读该清单；不得静默跳过自检进入论文阶段。
 10. 按 `references/质检清单.md` 完成作者自检，再派发独立质检 Subagent 执行 `P2` 编程终检；未返回 `PASS` 不得进入论文阶段或宣称编程交付完成。
 
 ## 阶段内独立门禁
@@ -55,6 +56,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 | 开始实现 | `references/工作流程.md` |
 | 存在竞赛型子问题 | `../../竞争型问题协议.md` |
 | 竞赛型用启发式求解器（贪心/局部搜索/采样+局部精化），或准备发出停止证书 | 先读 `../../../references/教训与反模式.md`（A3：启发式 incumbent 非证优前必做机制不同求解器对照） |
+| 执行命令被权限/分类器拦截 | 读 `../../../references/教训与反模式.md`（A5：停止自修，立即升级最短路径） |
 | 计算量过大 / 需 GPU 或并行加速 | `references/计算加速.md` |
 | 验证完备性（采样收敛/网格收敛/边界校验） | `references/验证完备性.md` |
 | 创新候选、状态和证据门控 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新证据协议.md` |

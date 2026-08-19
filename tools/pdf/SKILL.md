@@ -10,6 +10,16 @@ license: Proprietary. LICENSE.txt has complete terms
 
 This guide covers essential PDF processing operations using Python libraries and command-line tools. For advanced features, JavaScript libraries, and detailed examples, see REFERENCE.md. If you need to fill out a PDF form, read FORMS.md and follow its instructions.
 
+## Windows 编码注意（本机必读，提取第一步就执行）
+
+本机 Windows 的 Python 控制台/stdout 与 `open()` 默认编码是 GBK：直接 `print()` 中文会乱码，`open(path, 'w')` 写中文文本文件默认也是 GBK。做任何 PDF 文本/表格提取、OCR 导出、日志或 CSV/MD/JSON 输出时：
+
+1. **写文本文件一律显式 UTF-8**：`open(path, 'w', encoding='utf-8')`，禁止省略 `encoding`。提取结果默认 GBK 会把中文写坏。
+2. **读回提取结果同样用 UTF-8**：`open(path, 'r', encoding='utf-8')`，与写入保持一致。
+3. **打印含中文的 Python 输出前**，脚本开头加 `sys.stdout.reconfigure(encoding='utf-8', errors='replace')`；否则管道/重定向到控制台会乱码，曾把乱码当提取结果写进后续处理。
+
+第 1 步开始就按 UTF-8 写，不要等发现乱码再回改。
+
 ## Quick Start
 
 ```python

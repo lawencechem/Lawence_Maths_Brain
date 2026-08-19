@@ -82,6 +82,10 @@ description: 当用户要求数学建模、建模竞赛、建模分析、代码�
 - 两个根目录必须不同；`SKILL_ROOT` 完全只读，禁止写入或覆盖其中任何文件（无写入豁免）。
 - 输入附件只读。确需修改模板时，先复制到 `PROJECT_ROOT` 再处理。
 
+## 本机环境约定（Windows 编码）
+
+本机 Windows 的 Python 控制台与 `open()` 默认编码为 GBK：写任何文本文件（提取文本、日志、CSV、MD、JSON、配置）一律显式 `open(path, 'w', encoding='utf-8')`；读回同样用 `encoding='utf-8'`；脚本打印含中文输出前先 `sys.stdout.reconfigure(encoding='utf-8', errors='replace')`。这是所有角色与工具的通用约定，PDF 提取入口的细则见 `tools/pdf/SKILL.md`「Windows 编码注意（本机必读）」。禁止把 GBK 乱码当成提取真值写入后续处理。
+
 ## 路由
 
 | 用户意图 | 加载入口 | 是否要求前一阶段已完成 |

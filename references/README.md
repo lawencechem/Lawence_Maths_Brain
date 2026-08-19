@@ -39,6 +39,7 @@
 | 任务 | 读取 |
 |---|---|
 | 选模型 | `roles/建模手/references/建模设计理论.md` |
+| 选模型/算法（强制双源对照） | `算法选择双源对照.md`，再走 `算法索引.md` → 匹配 `../assets/*.md`（需要时进 `../knowledge/` 精读） |
 | 查具体算法 | `算法索引.md`，再读取一个匹配的 `../assets/*.md` |
 | Python/MATLAB 实现 | `roles/编程手/references/工作流程.md` |
 | MATLAB 工具箱与出图 | `roles/编程手/references/MATLAB规范.md` |

@@ -185,7 +185,7 @@ description: 当用户要求数学建模、建模竞赛、建模分析、代码�
 | 当前任务 | 额外读取 |
 |---|---|
 | 逐题判断达标型/竞赛型，或执行竞争性搜索 | `references/竞争型问题协议.md` |
-| 选模型或查算法 | `references/算法索引.md`，再读取一个或少数几个相关 `assets/*.md` |
+| 选模型或查算法（强制双源对照） | `references/算法选择双源对照.md`，再走 `references/算法索引.md` → 匹配 `assets/*.md`（需要时进 `knowledge/` 精读） |
 | 进入发散/收敛/写作阶段（调数） | `references/温度策略.md` |
 | 搜索论文 | `tools/paper_search/SKILL.md` |
 | 读取题目 PDF | `tools/pdf/SKILL.md` |

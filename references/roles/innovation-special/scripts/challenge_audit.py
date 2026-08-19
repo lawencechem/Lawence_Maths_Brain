@@ -25,6 +25,9 @@ VALID_CHANGE_LEVELS = {
     "solver_structure",
     "information",
 }
+# 布局/结构/拓扑类题（problem_class="layout_structure"）在非 PROVEN_OPTIMAL 停止前，
+# 必须完成至少一次表示/分解级挑战，否则挑战审计 FAIL（见 竞争型问题协议.md 四、决策表示）。
+REPRESENTATION_LEVELS = {"representation", "decomposition"}
 VALID_CHALLENGE_STATES = {"PROMOTED", "REJECTED", "INCONCLUSIVE"}
 VALID_RULERS = {
     "lower_bound",
@@ -145,6 +148,7 @@ def audit_ledger(
             _issue(issues, label, "completion_mode 必须为 competitive")
         if question.get("state") != "CHALLENGE_CLOSED":
             _issue(issues, label, "state 必须为 CHALLENGE_CLOSED")
+        problem_class = str(question.get("problem_class") or "").strip()
 
         constraints = question.get("hard_constraints")
         if not isinstance(constraints, list) or not constraints:
@@ -217,6 +221,7 @@ def audit_ledger(
         if not isinstance(challenges, list) or not challenges:
             _issue(issues, label, "challenges 必须至少包含一个结构性挑战")
             challenges = []
+        has_representation_level = False
         change_descriptions: set[str] = set()
         challenge_ids: set[str] = set()
         for ch_index, challenge in enumerate(challenges, 1):
@@ -233,6 +238,8 @@ def audit_ledger(
                 challenge_ids.add(challenge_id)
             if challenge.get("change_level") not in VALID_CHANGE_LEVELS:
                 _issue(issues, ch_label, "change_level 必须是结构、目标、分解、模型、信息或求解结构之一")
+            elif challenge.get("change_level") in REPRESENTATION_LEVELS:
+                has_representation_level = True
             for field in ("target_bottleneck", "structural_change"):
                 if not _nonempty(challenge, field):
                     _issue(issues, ch_label, f"缺少 {field}")
@@ -312,6 +319,9 @@ def audit_ledger(
                 _issue(issues, stop_label, "边际收益必须不超过预设阈值")
         elif reason == "BLOCKED_BY_CONSTRAINT" and not _nonempty(stop, "blocking_constraint"):
             _issue(issues, stop_label, "缺少 blocking_constraint")
+
+        if problem_class == "layout_structure" and reason != "PROVEN_OPTIMAL" and not has_representation_level:
+            _issue(issues, stop_label, "布局/结构类题在非 PROVEN_OPTIMAL 停止前必须完成至少一次表示/分解级挑战（change_level=representation/decomposition）")
 
     expected = {str(q).strip() for q in (expected_questions or []) if str(q).strip()}
     missing = sorted(expected - seen)

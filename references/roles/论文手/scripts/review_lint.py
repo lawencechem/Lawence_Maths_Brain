@@ -21,7 +21,8 @@
         [--config review_lint.json] [--demo] [--relax-orphans] [--tol 0.02]
 
 退出码：
-  正常模式  0 = 无命中；1 = 有命中（按终审清单 A 类，命中即 FAIL，不允许进 W2）
+  正常模式  0 = 无命中且每个配置检查（anchors/claims/judgements）至少命中 1 处；
+            1 = 有命中，或存在 0 命中的配置项（配置没对上论文 → FAIL，不允许进 W2）
   --demo    0 = 全部注入缺陷被捕获；1 = 存在未被捕获的注入缺陷
 """
 import re, json, glob, sys, os, argparse
@@ -188,9 +189,11 @@ def check_orphans(text, res_nums, tol, config, relax):
 
 
 def check_anchors(text, config, results_dir, tol):
-    issues = []
+    issues, coverage = [], []
     for a in config.get('anchors', []):
         pat = a['pattern']
+        matches = list(re.finditer(pat, text))
+        coverage.append((a.get('name', pat[:20]), len(matches)))
         want = a.get('value')
         if want is None and a.get('file'):
             want = _results_value(results_dir, {'file': a['file'], 'field': a.get('field')})
@@ -199,7 +202,7 @@ def check_anchors(text, config, results_dir, tol):
             continue
         atol = float(a.get('tol', tol))
         want = float(want)
-        for m in re.finditer(pat, text):
+        for m in matches:
             mm = re.search(r'(\d+(?:\.\d+)?)', m.group(0))
             if not mm:
                 continue
@@ -207,12 +210,14 @@ def check_anchors(text, config, results_dir, tol):
             if abs(v - want) / max(abs(want), 1e-9) > atol:
                 issues.append(('C1 口径锚点与结果不符',
                                f'L{_ln(text, m)}: {a.get("name")} "{_ctx(text, m)}" 声称 {v:g}，真值 {want:g}'))
-    return issues
+    return issues, coverage
 
 
 def check_claims(text, config, results_dir):
-    issues = []
+    issues, coverage = [], []
     for c in config.get('claims', []):
+        matches = list(re.finditer(c['pattern'], text))
+        coverage.append((c.get('name', c['pattern'][:20]), len(matches)))
         want = c.get('expected')
         if want is None and c.get('expected_file'):
             want = _results_value(results_dir, {'file': c['expected_file'], 'field': c.get('expected_field')})
@@ -220,7 +225,7 @@ def check_claims(text, config, results_dir):
             issues.append(('C5 声称检查（无法取得期望值）', f'{c.get("name")}: 配置缺 expected 或 expected_file'))
             continue
         want_nums = {float(x) for x in (want if isinstance(want, list) else [want])}
-        for m in re.finditer(c['pattern'], text):
+        for m in matches:
             got = {float(x) for x in re.findall(c.get('extract', r'\d+(?:\.\d+)?'), m.group(0))}
             if not got:
                 continue
@@ -228,15 +233,16 @@ def check_claims(text, config, results_dir):
                 issues.append(('C5 表述与实现不符',
                                f'L{_ln(text, m)}: {c.get("name")} 声称 {sorted(got)}，'
                                f'实现/结果 {sorted(want_nums)}（{c.get("what", "")}）'))
-    return issues
+    return issues, coverage
 
 
 def check_judgements(text, config, results_dir):
-    issues = []
+    issues, coverage = [], []
     for j in config.get('judgements', []):
         rows = _csv_rows(results_dir, j['cond_file'])
         if not rows:
             issues.append(('C1① 判据（结果文件缺失）', j.get('name', j['cond_file'])))
+            coverage.append((j.get('name', j['cond_file']), 0))
             continue
         ac, cc = int(j.get('angle_col', 0)), int(j.get('cond_col', 1))
         g = {}
@@ -253,11 +259,13 @@ def check_judgements(text, config, results_dir):
         sick = tuple(j.get('sick_words', ['病态', '退化']))
         okw = tuple(j.get('ok_words', ['适定']))
         plain = _strip_tables(text)
+        candidates = 0
         for m in re.finditer(r'[^。；\n]+', plain):
             seg = m.group(0)
             ths = [float(x) for x in re.findall(j.get('angle_regex', r'(?:\\theta|θ)\s*[=≈~]\s*(\d+(?:\.\d+)?)'), seg)]
             if not ths or not g:
                 continue
+            candidates += 1
             is_sick = any(w in seg for w in sick)
             is_ok = any(w in seg for w in okw)
             for th in ths:
@@ -271,34 +279,44 @@ def check_judgements(text, config, results_dir):
                     issues.append(('C1① 适定断言与结果不符',
                                    f'L{_ln(plain, m)}: 断言 θ={th:g}° 适定，'
                                    f'{j["cond_file"]} 该处 κ≈{k:.1f}（>{thresh:g} 病态）'))
-    return issues
+        coverage.append((j.get('name', j['cond_file']), candidates))
+    return issues, coverage
 
 
 # ---------------- 汇总 ----------------
 def check_all(text, source_type, results_dir, tol, config, relax):
-    issues = []
+    issues, coverage = [], []
     issues += check_placeholder(text)
     issues += check_numbering(text, source_type)
     issues += check_orphans(text, _load_res_nums(results_dir), tol, config, relax)
-    issues += check_anchors(text, config, results_dir, tol)
-    issues += check_claims(text, config, results_dir)
-    issues += check_judgements(text, config, results_dir)
-    return issues
+    for fn in (check_anchors, check_claims, check_judgements):
+        i, c = fn(text, config, results_dir, tol) if fn is check_anchors else fn(text, config, results_dir)
+        issues += i
+        coverage += c
+    return issues, coverage
 
 
-def report(issues, tag):
+def report(issues, tag, coverage=None):
     print(f'=== 确定性终审 lint {tag} ===')
     if not issues:
         print('未命中任何缺陷。')
-        return
-    seen = {}
-    for kind, msg in issues:
-        seen.setdefault(kind, []).append(msg)
-    for kind, msgs in seen.items():
-        print(f'\n[{kind}] × {len(msgs)}')
-        for msg in msgs[:10]:
-            print('   ', msg)
-    print(f'\n共 {len(issues)} 条')
+    else:
+        seen = {}
+        for kind, msg in issues:
+            seen.setdefault(kind, []).append(msg)
+        for kind, msgs in seen.items():
+            print(f'\n[{kind}] × {len(msgs)}')
+            for msg in msgs[:10]:
+                print('   ', msg)
+        print(f'\n共 {len(issues)} 条')
+    if coverage is not None:
+        if coverage:
+            print('\n[配置覆盖] 每个配置检查在正文的实际命中句数：')
+            for name, cnt in coverage:
+                flag = '  ⚠️ 0 命中（正则未匹配正文，请核对配置或确认已删改）' if cnt == 0 else ''
+                print(f'   {name}: {cnt} 处{flag}')
+        else:
+            print('\n[配置覆盖] 未配置 anchors/claims/judgements，仅运行内置 C6a/C6b/C1 孤儿数字。')
 
 
 # ---------------- demo：注入已知缺陷，自证命中 ----------------
@@ -337,7 +355,7 @@ def run_demo(text, source_type, results_dir, tol, config):
         defects.append(('C1① 判据', 'C1①', '为病态'))
 
     injected_text = ''.join(injected)
-    issues = check_all(injected_text, source_type, results_dir, tol, config, relax=False)
+    issues, coverage = check_all(injected_text, source_type, results_dir, tol, config, relax=False)
     kinds = [k for k, _ in issues]
 
     ok = True
@@ -346,7 +364,7 @@ def run_demo(text, source_type, results_dir, tol, config):
         hit = any(sub in k for k in kinds)
         ok &= hit
         print(f'  [{"命中" if hit else "未命中!!"}] {name}  ← 注入「{frag[:30]}」')
-    report([i for i in issues], '（注入后）')
+    report(issues, '（注入后）', coverage)
     return ok
 
 
@@ -368,9 +386,10 @@ def main():
         sys.exit(0 if ok else 1)
 
     text, st = load_text(args.paper)
-    issues = check_all(text, st, args.results, args.tol, config, relax=args.relax_orphans)
-    report(issues, '（冻结稿）')
-    sys.exit(0 if not issues else 1)
+    issues, coverage = check_all(text, st, args.results, args.tol, config, relax=args.relax_orphans)
+    report(issues, '（冻结稿）', coverage)
+    fail = bool(issues) or any(cnt == 0 for _, cnt in coverage)
+    sys.exit(1 if fail else 0)
 
 
 if __name__ == '__main__':

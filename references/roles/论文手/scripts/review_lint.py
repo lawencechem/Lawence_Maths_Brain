@@ -158,13 +158,13 @@ def check_numbering(text, source_type):
         for m in re.finditer(r'\\caption\{(表|图)\s*\d', text):
             issues.append(('C6b caption 手写编号撞自动编号',
                            f'L{_ln(text, m)}: {m.group(0)[:36]}'))
-    # Word 与 tex 共同：正文「图 N/表 N」字面重号
+    # Word 与 tex 共同：只查「题注行」重号（行首即 图N/表N），不查正文重复引用
     seen = {}
-    for m in re.finditer(r'(?<![A-Za-z])(图|表)\s*(\d+)', text):
+    for m in re.finditer(r'(?m)^(图|表)\s*(\d+)[:：.、\s]', text):
         key = (m.group(1), int(m.group(2)))
         if key in seen:
-            issues.append(('C6b 图/表编号重号',
-                           f'L{_ln(text, m)}: "{m.group(0)}" 与 L{seen[key]} 重复'))
+            issues.append(('C6b 图/表题注重号',
+                           f'L{_ln(text, m)}: 以"{m.group(0).strip()}"开头的题注与 L{seen[key]} 重复'))
         else:
             seen[key] = _ln(text, m)
     return issues
@@ -318,16 +318,20 @@ def run_demo(text, source_type, results_dir, tol, config):
     defects.append(('C6b 编号重号', 'C6b', '图 1 注入重号'))
 
     res_nums = _load_res_nums(results_dir)
-    ghost = 12345.678 if not res_nums else max(res_nums) + 0.001
+    # 孤儿数字注入值必须远离所有 results 数值（含相对容差带）
+    base = max(res_nums) + 10.0 if res_nums else 12345.678
+    ghost = base
+    while _near(ghost, res_nums, tol):
+        ghost = ghost * 1.37 + 7.7
     inject(f'本段注入孤儿数字 {ghost:.3f} 以证明命中')
     defects.append(('C1 孤儿数字', 'C1 孤儿数字', f'{ghost:.3f}'))
 
     if config.get('anchors'):
         inject('初始最大偏差注入 $12.4$ m')
-        defects.append(('C1 锚点', 'C1 锚点', '注入 $12.4$ m'))
+        defects.append(('C1 锚点', 'C1 口径锚点', '注入 $12.4$ m'))
     if config.get('claims'):
         inject('首轮取注入 FY02、FY05')
-        defects.append(('C5 声称', 'C5', '注入 FY02、FY05'))
+        defects.append(('C5 声称', 'C5 ', '注入 FY02、FY05'))
     if config.get('judgements'):
         inject('注入误判：$\\theta=180^{\\circ}$ 处近共线为病态')
         defects.append(('C1① 判据', 'C1①', '为病态'))

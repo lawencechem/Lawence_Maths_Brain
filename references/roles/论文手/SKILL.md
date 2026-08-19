@@ -66,7 +66,7 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 5. 默认先确定同一份正文、数据、图表和参考文献，再生成 Word；用户显式要求 LaTeX 时同时生成 LaTeX，禁止两份论文出现不同结论。
 6. Word 使用 `../../../tools/docx/SKILL.md` 构建 DOCX，公式使用原生 OMML；已有完整 LaTeX 主稿时可通过 `convert_latex` 生成内容一致的 Word 初稿，再按官方 DOCX 模板修正。LaTeX（可选）使用 `../../../tools/latex/SKILL.md` 复制完整官方模板项目、填充源码并真实编译 PDF。
 7. 检查 Word 的结构、篇幅、公式、图表、全部子问题覆盖、编号引用、参考文献和实际渲染页数。用户显式要求 LaTeX 时，还必须消除编译错误及未解析的引用，核对权威资源—源码—PDF 哈希、PDF 总页数、正文页数、附录边界、字体嵌入、空白页、页面尺寸和图片 DPI；所有预警必须修正，或根据当届官方规则记录明确覆盖理由后才能继续。页数超限只允许内容级解决（删、并、移段落或图表格），不允许改行距/图宽压版面（排版规格已前置冻结，见 `references/论文格式规范.md`）。
-8. 完成下列确定性门禁后，派发独立质检 Subagent 执行 `W2` 论文终检；未返回 `PASS` 不得宣称完成或交付论文。
+8. 完成下列确定性门禁后（含按 `references/终审清单.md` 运行的确定性终审 lint：`python "<SKILL_ROOT>/references/roles/论文手/scripts/review_lint.py" --paper "<PROJECT_ROOT>/完整论文.docx|完整论文-LaTeX/main.tex" --results "<PROJECT_ROOT>/results"`，退出码非 0 即 `FAIL`），派发独立质检 Subagent 执行 `W2` 论文终检；未返回 `PASS` 不得宣称完成或交付论文。
 
 ## 阶段内独立门禁
 

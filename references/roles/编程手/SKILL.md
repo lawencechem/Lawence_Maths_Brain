@@ -54,6 +54,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 |---|---|
 | 开始实现 | `references/工作流程.md` |
 | 存在竞赛型子问题 | `../../竞争型问题协议.md` |
+| 竞赛型用启发式求解器（贪心/局部搜索/采样+局部精化），或准备发出停止证书 | 先读 `../../../references/教训与反模式.md`（A3：启发式 incumbent 非证优前必做机制不同求解器对照） |
 | 计算量过大 / 需 GPU 或并行加速 | `references/计算加速.md` |
 | 验证完备性（采样收敛/网格收敛/边界校验） | `references/验证完备性.md` |
 | 创新候选、状态和证据门控 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新证据协议.md` |

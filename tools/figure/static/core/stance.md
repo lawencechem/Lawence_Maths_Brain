@@ -4,7 +4,7 @@ This skill uses a Python/Matplotlib single-track backend for formal data figures
 
 ## Color policy
 
-Prefer **unified method families across all panels** over maximal hue separation. For dense Nature Machine Intelligence-style figure pages, use the low-saturation `NMI pastel` family described in `references/api.md` and reserve green/red mainly for gains, drops, and other directional cues.
+Prefer **unified method families across all panels** over maximal hue separation. For dense Nature Machine Intelligence-style figure pages, use the low-saturation `NMI pastel` family described in `../../references/api-templates/api.md` and reserve green/red mainly for gains, drops, and other directional cues.
 
 ## Stance
 
@@ -15,8 +15,8 @@ Prefer **unified method families across all panels** over maximal hue separation
 - Prefer direct labels over legends when categories are spatially fixed or the legend would force unnecessary eye travel.
 - Keep one restrained palette per figure: usually one neutral family, one signal family, and one accent family.
 - Treat statistics, `n`, error-bar definitions, source-data traceability, and image-integrity notes as part of the figure, not as optional caption cleanup.
-- When the user asks for broad `Nature` style rather than ML/NMI-specific style, read `references/nature-2026-observations.md` before choosing layout.
-- When the user references `figures4papers` or the older `scientific-figure-making` skill, treat this skill as the successor and open `references/demos.md` for bundled Python demo scripts.
+- When the user asks for broad `Nature` style rather than ML/NMI-specific style, read `../../references/guides/nature_2026_observations.md` before choosing layout.
+- When the user references `figures4papers` or the older `scientific-figure-making` skill, treat this skill as the successor and use the current examples linked from `../../SKILL.md`.
 
 ## User-facing privacy rule
 

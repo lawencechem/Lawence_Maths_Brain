@@ -27,4 +27,4 @@ If any row, column, replicate, image, or category is excluded, record the before
 
 The highest-priority rule is: **the chart serves the scientific logic**. Aesthetic polish, template matching, and complex layout are subordinate to making the core conclusion clear, defensible, and reviewable.
 
-For the full method to convert a request into core conclusion, evidence hierarchy, panel map, and review-risk checks, open `references/figure-contract.md`.
+For the full method to convert a request into core conclusion, evidence hierarchy, panel map, and review-risk checks, open `../../references/guides/figure_contract.md`.

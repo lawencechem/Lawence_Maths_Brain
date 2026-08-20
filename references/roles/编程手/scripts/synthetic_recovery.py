@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """合成数据回收检验（三明治架构）：正向生成 → 加噪注入 → 反向回收 → 报偏差。
 
-配合分布式决策回路本地 P4（`../references/验证完备性.md` 第 7 类触发式验证）使用：
-当两种独立口径对同一量的估计分歧超过联合标准误的 2 倍
-（|d1-d2| > 2*sqrt(SEM1^2+SEM2^2)）时，强制触发本检验，验证主方法在
-「已知真值」条件下是否无偏。
+这是本地 P4（`../references/验证完备性.md`）的教学演示，只展示“已知真值 →
+加噪 → 回收 → 报告”的结构。正式项目必须在 PROJECT_ROOT 实现题目专用正向模型、
+噪声机制和回收链；本演示不能证明其他题目的算法或物理模型正确。
 
 判定口径（关键）：
   - Δd 取多噪声实现下回收值的**均值偏差** mean(d_recovered) − d_true（系统偏差），
     不是单次观测偏差（单次偏差混入随机噪声）；
   - 报告不确定度取回收值的**单次弥散 σ_d**（不是 SEM）；
-  - |Δd| < σ_d / 3 才可宣称「该方法在该工况下无偏」。
+  - 本演示用 |Δd| < σ_d / 3 作为示例判据；正式阈值由题目精度和决策裕度确定。
 
-内置示例（单层薄膜厚度反演，对应 940cm⁻¹ 深谷那类多光束干涉问题）：
+内置示例（单层薄膜厚度反演）：
   - 正向生成：Airy 反射谱（含弱色散 n2(λ)），真值 d_true；
-  - 加噪注入：按 --snr 加高斯噪声（默认峰值信噪比 45 dB）；
+  - 加噪注入：按 --snr 加高斯噪声（默认峰值信噪比 50 dB）；
   - 反向回收：方法 A = 忽略相位色散的间距法（两光束一阶，选最深谷对）；
               方法 B = 含色散的 Airy 最小二乘拟合（多光束全阶）；
   - 报告 Δd、无偏判定、谷对漂移、可辨识带。
@@ -25,8 +24,8 @@
   - 高阶拟合会**混叠**：fringe 对比度大时，RMSE 对厚度异常尖锐，粗网格会把
     真值"掉进网格缝里"而选中混叠阶。因此方法 B 用间距法（低阶）做初始种子、
     Airy 拟合（高阶）做精化——低阶不是没用，它是粗定位器（模型族继承）。
-  - 本脚本是通用三明治模板：换题时替换 forward() 与 recover() 两个函数即可，
-    触发、判定、报告骨架保持不变。
+  - 本脚本保留为只读教学示例。换题时在 PROJECT_ROOT 新建项目专用验证脚本，
+    不要原地修改本文件，也不要把 --demo 输出当作项目证据。
 
 用法：
     python synthetic_recovery.py --demo
@@ -77,18 +76,6 @@ def airy_reflectance(wavelengths: np.ndarray, d: float, n1: float,
 # ---------------------------------------------------------------------------
 # 反向回收方法 A：间距法（两光束一阶，忽略相位色散）
 # ---------------------------------------------------------------------------
-def _valley_indices(reflectance: np.ndarray) -> list[int]:
-    """局部极小值且低于反射率中值 —— 只留真谷，滤掉平滑峰顶的噪声伪谷。"""
-    med = float(np.median(reflectance))
-    idx = []
-    for i in range(1, len(reflectance) - 1):
-        if (reflectance[i] < reflectance[i - 1]
-                and reflectance[i] <= reflectance[i + 1]
-                and reflectance[i] < med):
-            idx.append(i)
-    return idx
-
-
 def _smooth_spectrum(reflectance: np.ndarray, window: int = 13) -> np.ndarray:
     """盒式平滑（边沿镜像填充，消边缘伪谷）。供谷位检测前滤除噪声细纹。"""
     w = int(window)
@@ -259,9 +246,11 @@ def add_noise(reflectance: np.ndarray, snr_db: float, rng: np.random.Generator):
     return reflectance + rng.normal(0.0, sigma, size=reflectance.shape), sigma
 
 
-def discordance_trigger(d1: float, sem1: float, d2: float, sem2: float):
-    """本地 P4 触发（口径分歧）：|d1−d2| > 2·√(SEM1²+SEM2²)。"""
-    threshold = 2.0 * np.sqrt(sem1**2 + sem2**2)
+def discordance_trigger(d1: float, sem1: float, d2: float, sem2: float,
+                        covariance: float = 0.0):
+    """演示用差异警戒线；同数据估计应传入两估计均值的协方差。"""
+    delta_variance = max(sem1**2 + sem2**2 - 2.0 * covariance, 0.0)
+    threshold = 2.0 * np.sqrt(delta_variance)
     return bool(abs(d1 - d2) > threshold), float(threshold)
 
 
@@ -316,8 +305,8 @@ def run_demo(seed: int = 7, snr_db: float = 50.0, d_true: float = 8100.0,
 
     dA = float(np.mean(dA_reps))          # 系统偏差口径：多实现均值
     dB = float(np.mean(dB_reps))
-    sigma_A = float(np.std(dA_reps))      # 报告不确定度口径：单次弥散
-    sigma_B = float(np.std(dB_reps))
+    sigma_A = float(np.std(dA_reps, ddof=1))  # 报告不确定度口径：单次弥散
+    sigma_B = float(np.std(dB_reps, ddof=1))
     semA = sigma_A / np.sqrt(n_reps)
     semB = sigma_B / np.sqrt(n_reps)
 
@@ -326,7 +315,9 @@ def run_demo(seed: int = 7, snr_db: float = 50.0, d_true: float = 8100.0,
     okA = judge_bias(dA_bias, sigma_A)
     okB = judge_bias(dB_bias, sigma_B)
 
-    trigger, threshold = discordance_trigger(dA, semA, dB, semB)
+    covariance_mean = float(np.cov(dA_reps, dB_reps, ddof=1)[0, 1] / n_reps)
+    trigger, threshold = discordance_trigger(
+        dA, semA, dB, semB, covariance=covariance_mean)
 
     # P7 物理矛盾锁定：两光束一阶 vs 全阶 Airy 对谷深的预测差异
     r01_avg = (n1 - n2_ref) / (n1 + n2_ref)
@@ -368,7 +359,8 @@ def run_demo(seed: int = 7, snr_db: float = 50.0, d_true: float = 8100.0,
         "trigger": {
             "fired": trigger,
             "threshold_nm": threshold,
-            "rule": "|dA-dB| > 2*sqrt(SEM_A^2+SEM_B^2)",
+            "covariance_of_means_nm2": covariance_mean,
+            "rule": "|dA-dB| > 2*sqrt(SEM_A^2+SEM_B^2-2*covariance)",
         },
         "valley_drift_nm": {
             "min": drift[0], "max": drift[1],
@@ -413,7 +405,7 @@ def run_demo(seed: int = 7, snr_db: float = 50.0, d_true: float = 8100.0,
     lines.append(f"      d = {b['d_nm']:.3f} ± {b['sigma_nm']:.3f} nm | "
                  f"系统偏差 Δd = {b['systematic_delta_nm']:+.3f} nm | 无偏? {b['unbiased']}")
     lines.append(f"  P4 触发: |dA-dB| = {abs(a['d_nm']-b['d_nm']):.1f} nm > "
-                 f"2·√(SEM²) = {t['threshold_nm']:.2f} nm → {t['fired']}")
+                 f"2u_Δ(含配对协方差) = {t['threshold_nm']:.2f} nm → {t['fired']}")
     lines.append(f"  P5 可辨识带: [{band[0]:.1f}, {band[1]:.1f}] nm（A 法谷对漂移区间）")
     lines.append(f"  P7 物理矛盾锁定: ρ = {ph['round_trip_amplitude_rho']:.3f} | "
                  f"谷深 两光束一阶 = {ph['two_beam_min_prediction']:.4f} vs "
@@ -442,9 +434,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.demo:
-        parser.error("本模板必须用 --demo 跑内置演示；换题时改 forward/recover 函数。")
-    if args.report and not os.path.exists(os.path.dirname(args.report)):
-        raise FileNotFoundError(f"报告目录不存在: {os.path.dirname(args.report)}")
+        parser.error("本文件仅提供 --demo 教学演示；正式验证请在 PROJECT_ROOT 编写题目专用脚本。")
+    report_dir = os.path.dirname(args.report) if args.report else ""
+    if report_dir and not os.path.exists(report_dir):
+        raise FileNotFoundError(f"报告目录不存在: {report_dir}")
 
     text, report = run_demo(seed=args.seed, snr_db=args.snr,
                             d_true=args.d, n_reps=args.reps)

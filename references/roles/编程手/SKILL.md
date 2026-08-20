@@ -29,10 +29,10 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 
 1. 按用户要求或现有项目语言选择 Python/MATLAB 作为求解语言；没有偏好时按模型依赖和现有环境选择并说明。无论求解语言为何，正式配图统一使用 Python/Matplotlib；MATLAB 求解结果先导出为可追溯 CSV/MAT 再绘图。
 2. 按选中的模型功能动态检查依赖，禁止一次性要求全部包：
-   - Python：`python scripts/check_env.py --features data visualization optimization`
+   - Python：`python "<SKILL_ROOT>/references/roles/编程手/scripts/check_env.py" --features data visualization optimization`
    - MATLAB 求解：`check_matlab_env(["data","optimization"])`；正式配图另行检查 Python/Matplotlib/NetworkX 与 GeoGebra。
 2.5 估算计算量。预计耗时、内存或规模会阻碍完整求解时，按真实负载选择跨时间步 numpy 向量化、稀疏计算、并行或 GPU 加速；加速后必须与合适的串行或高保真基线核对，容差由模型精度和量纲确定，不得套用固定阈值或改变模型结果。
-3. 实现数据读取、预处理和核心求解链，用真实输入或结构等价小实例跑通从 `PROJECT_ROOT` 执行的最小命令；任何结论必须来自真实输出。
+3. **开始求解前必须读取 `references/验证完备性.md`（未读视为未执行本步；核心反演/估计与多口径差异按本地 P4 处理）**。实现数据读取、预处理和核心求解链，用真实输入或结构等价小实例跑通从 `PROJECT_ROOT` 执行的最小命令；任何结论必须来自真实输出。
 4. 在全量计算、参数扫描和正式出图前，派发独立质检 Subagent 执行 `P1` 最小可运行结果门禁；实现问题由编程手修正，模型合同问题携证据返回建模手。未返回 `PASS` 不得继续扩展。
 5. 按 `../innovation-special/SKILL.md` 把题目分析报告中的候选登记到 `results/创新证据清单.json`。先完整运行合理基线；达标型按验证风险收敛。竞赛型按 `../../竞争型问题协议.md` 创建 `results/竞争性搜索账本.json`，建立内部标尺并冻结可行 incumbent，再在隔离分支挑战目标口径、决策表示、结构分解、模型信息或求解结构。**每次决策表示/求解结构挑战前，按 `../../算法选择双源对照.md` 执行双源对照（强制查库匹配 → 独立思考 → 碰头裁决），把 `source_reconciliation` 写入对应挑战条目**；库有 AI 无的盲区项默认最小原型或证据性拒绝。高竞争价值候选在预算内必须最小原型化；按实际证据更新为 `PROTOTYPED/VERIFIED/ADOPTED/DROPPED`。
 6. 从题目分析报告提取全部子问题并规范为 `q1…qN`，读取 `../../../references/视觉论证与配图策略.md`，先建立 `results/图表论证清单.json`。对每个候选证据先判断文字、公式、表格、数据图或非数据图哪个最直接；无明确读者疑问、核心主张和证据来源时不画图。
@@ -57,7 +57,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 | 存在竞赛型子问题 | `../../竞争型问题协议.md` |
 | 竞赛型用启发式求解器（贪心/局部搜索/采样+局部精化），或准备发出停止证书 | 先读 `../../../references/教训与反模式.md`（A3：启发式 incumbent 非证优前必做机制不同求解器对照） |
 | 执行命令被权限/分类器拦截 | 读 `../../../references/教训与反模式.md`（A5：停止自修，立即升级最短路径） |
-| 验证完备性（采样收敛/网格收敛/边界校验） | `references/验证完备性.md` |
+| 验证完备性（必读：核心反演、差异处置与不确定性账本等） | `references/验证完备性.md` |
 | 创新候选、状态和证据门控 | `../innovation-special/SKILL.md`、`../innovation-special/references/创新证据协议.md` |
 | 物理或几何简化证明 | `../innovation-special/references/物理几何简化.md` |
 | 算法简化或求解创新 | `../innovation-special/references/求解创新路由.md` |

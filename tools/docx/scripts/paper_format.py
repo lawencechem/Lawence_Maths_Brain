@@ -354,12 +354,10 @@ def validate_paper_structure(
     if not quality_checks:
         return errors
 
-    min_content_units = 15000 if min_content_units is None else min_content_units
-    min_equations = 5 if min_equations is None else min_equations
+    min_content_units = 0 if min_content_units is None else min_content_units
+    min_equations = 0 if min_equations is None else min_equations
     min_figures = 0 if min_figures is None else min_figures
-    min_tables = 3 if min_tables is None else min_tables
-    target_pages = 20 if target_pages is None else target_pages
-    official_max_pages = 30 if official_max_pages is None else official_max_pages
+    min_tables = 0 if min_tables is None else min_tables
 
     all_text = "\n".join(_document_texts(doc))
     units = _content_units(all_text)
@@ -431,7 +429,17 @@ def save_document(doc, project_root, filename="完整论文.docx", overwrite=Fal
     return output
 
 
-def validate_document(path, *, rendered_pages=None):
+def validate_document(
+    path,
+    *,
+    rendered_pages=None,
+    min_content_units=None,
+    min_equations=None,
+    min_figures=None,
+    min_tables=None,
+    target_pages=None,
+    official_max_pages=None,
+):
     """校验现有 DOCX，并返回可供完成门禁使用的结构化结果。"""
     source = Path(path).resolve()
     if not source.is_file() or source.suffix.casefold() != ".docx":
@@ -441,6 +449,12 @@ def validate_document(path, *, rendered_pages=None):
         doc,
         quality_checks=True,
         rendered_pages=rendered_pages,
+        min_content_units=min_content_units,
+        min_equations=min_equations,
+        min_figures=min_figures,
+        min_tables=min_tables,
+        target_pages=target_pages,
+        official_max_pages=official_max_pages,
         require_rendered_pages=True,
     )
     text = "\n".join(_document_texts(doc))
@@ -464,10 +478,22 @@ def main():
     validate = commands.add_parser("validate", help="执行 DOCX 完成门禁")
     validate.add_argument("path", type=Path)
     validate.add_argument("--rendered-pages", type=int, required=True)
+    validate.add_argument("--min-content-units", type=int)
+    validate.add_argument("--min-equations", type=int)
+    validate.add_argument("--min-figures", type=int)
+    validate.add_argument("--min-tables", type=int)
+    validate.add_argument("--target-pages", type=int)
+    validate.add_argument("--official-max-pages", type=int)
     arguments = parser.parse_args()
     result = validate_document(
         arguments.path,
         rendered_pages=arguments.rendered_pages,
+        min_content_units=arguments.min_content_units,
+        min_equations=arguments.min_equations,
+        min_figures=arguments.min_figures,
+        min_tables=arguments.min_tables,
+        target_pages=arguments.target_pages,
+        official_max_pages=arguments.official_max_pages,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["passed"] else 1

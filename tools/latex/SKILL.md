@@ -99,6 +99,8 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate `
   --pdf "<PROJECT_ROOT>/完整论文.pdf" `
   --quality-checks `
   --questions q1 q2 q3 `
+  --min-content-units <W1篇幅预算下限> `
+  --min-pages <W1目标页数下限> `
   --min-image-dpi 300 `
   --max-pages <当届官方正文上限> `
   --body-start-page <正文在PDF中的第一页>
@@ -118,7 +120,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate `
 - LaTeX 项目中的代码和图表副本是否与 `PROJECT_ROOT` 权威来源绑定且未漂移；
 - PDF 空白页、页面尺寸、字体嵌入和内嵌位图 DPI。
 
-CUMCM 的约 15000 字词单位、约 20 页、5 个公式和 3 个表只是可覆盖的完整度质量目标。图数由主张—证据映射决定，不设统一最低值；质量校验通过 `fig:qN-*`、`tab:qN-*` 或 `eq:qN-*` 检查每个子问题的正式证据覆盖。页数上限等官方硬约束必须从目标届次规则读取后通过参数传入。
+工具不内置跨竞赛通用的最低字数、页数、公式、图或表数量。最低篇幅来自 `W1` 的页数预算，页数上限来自当届官方规则，并通过参数显式传入；逐题证据覆盖通过 `fig:qN-*`、`tab:qN-*` 或 `eq:qN-*` 检查。
 
 所有阈值必须是非负数，页数上限和最低 DPI 必须为正数。降低默认质量目标或临时使用 `--no-require-pdf` 跳过 PDF 审计时，必须同时传入 `--override-reason "<官方条款、用户要求或阶段性原因>"`，并由校验报告记录；跳过 PDF 的报告不能用于最终交付。质量校验必须通过 `--questions` 明确列出全部子问题，不能只为问题一集中出图。
 

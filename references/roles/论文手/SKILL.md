@@ -1,13 +1,13 @@
 ---
 name: 论文手
-description: 根据题目、建模分析和真实代码结果生成完整 Word 数学建模论文，用户显式要求时同时生成 LaTeX 论文。
+description: 根据题目、建模分析和真实代码结果生成用户指定的 Word、LaTeX/PDF 或双格式数学建模论文。
 ---
 
 # 论文手
 
 ## 开始门禁
 
-开始写作前先在进度更新中报告输入检查结果。题目、两个建模交付物、可运行代码、实际结果表格、`results/创新证据清单.json`、`results/图表论证清单.json` 或已核验文献任一缺失时，回退补齐，不要直接写论文。创新清单允许 `items` 为空；若题目分析报告存在 `competitive` 子问题，`results/竞争性搜索账本.json` 也是必需输入。图表清单存在 `PENDING_RENDER` 时可以规划正文，但不得通过 `W1/W2` 或交付最终论文。
+开始写作前先在进度更新中报告输入检查结果。题目、两个建模交付物、可运行代码、实际结果表格、`results/创新证据清单.json`、`results/图表论证清单.json` 或已核验文献任一缺失时，回退补齐，不要直接写论文。创新清单允许 `items` 为空；若题目分析报告存在 `competitive` 子问题，`results/竞争性搜索账本.json` 也是必需输入。图表清单存在 `PENDING_RENDER` 时只能规划证据大纲；清零前不得通过 `W1`、开始长篇正文或交付。
 
 - **完成态门禁（输入检查查"完成状态"，不查"文件存在"；缺任何一项回退编程手，禁止代补）**：
   - 存在竞赛型子问题时，账本每个子问题 `state == "CHALLENGE_CLOSED"` 且审计已通过；存在 `CHALLENGE_OPEN/PENDING` → 回退编程手闭合账本。
@@ -24,8 +24,7 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
   - **事后补出口禁止**：已执行的即兴路径不得通过事后补写出口洗白；补齐出口仅适用于尚未执行的后续步骤。
   - 预判摘要不进入论文正文。
 
-- 用户显式要求 LaTeX 时，必须先调用 `<SKILL_ROOT>/tools/latex/scripts/latex_paper.py init` 复制官方或内置模板；禁止另写一个临时 `main.tex` 替代模板链路。
-- 写正文前先调用 `latex_paper.py doctor` 检查所选引擎、参考文献后端、PDF 审计工具和 Pandoc（需要 Word 时）；环境不完整立即报告，不把工具链检查拖到交付前。
+- 生成 LaTeX/PDF 时，先调用 `latex_paper.py doctor` 检查所选引擎、参考文献后端和 PDF 审计工具（还需 Word 时再检查 Pandoc），通过后再用 `latex_paper.py init` 复制官方或内置模板；禁止另写临时 `main.tex` 绕过模板链路。
 - 引用前必须运行双引擎检索并打开 DOI 或出版机构页面核验元数据；仅复制上游参考文献列表不算核验。
 - 写作过程中持续核对篇幅和主张—证据映射，不要等文档生成后才第一次统计。
 
@@ -37,12 +36,12 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 ## 格式与交付物
 
-默认只生成 Word 论文；用户显式要求时同时生成 LaTeX 论文，确保正文内容、数据、图表和结论一致。
+默认只生成 Word；用户指定 Word、LaTeX/PDF 或两者时，严格按指定范围生成。
 
 - Word：`PROJECT_ROOT/完整论文.docx`。
 - LaTeX（可选）：`PROJECT_ROOT/完整论文-LaTeX/` 源码项目和由它实际编译的 `PROJECT_ROOT/完整论文.pdf`。
 
-用户明确只要 Word 时，只生成 Word。当届官方提交要求仍决定实际可提交的版本；论文仅供参考，格式和内容必须服从当届官方规则。
+用户只要一种格式时只生成该格式。同时生成两种格式时，正文、数据、图表和结论必须一致。当届官方提交要求仍决定实际可提交的版本；论文仅供参考，格式和内容必须服从当届官方规则。
 
 ## 官方规则优先级
 
@@ -53,19 +52,19 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 在生成前明确竞赛名称、届次、语言和官方规则来源。官方结构、页型、页边距、摘要页、页数、编号和提交格式均以当届规则为准。
 
-同时明确篇幅质量目标。**页数上限（当届官方正文上限）是唯一硬目标，字数由页数反推，不设独立于页数的全局字数目标**。经验密度：带图、表格、公式的建模论文正文每页约 500–600 字词单位（图表格公式占版），故官方 20 页 ≈ 10,000–11,000 字词单位。CUMCM 未取得当届更具体要求时，可按“正文 ≤ 当届官方上限页数、字数 = 页数 × 密度”规划完整度，但必须标注为可调整的质量目标，不能写成官方最低要求。以 2026 年官方规范为例，正文不超过 30 页；2025 修订稿为“正文尽量 20 页”。要更厚只能加图表格（换证据密度）或用户明确接受超页，禁止“扩字→压行距/图宽”的跷跷板。
+同时明确篇幅质量目标。当届官方正文上限是硬约束；`W1` 再按题目结构、模板和证据密度制定逐章页数/内容预算，不设跨竞赛通用的最低字数、页数、公式或图表数。页数超限通过删并内容或调整论证载体解决，禁止压行距、缩图等规避规则的做法。
 
 图数由主张—证据映射和题目结构决定，不设脱离论证的固定最低值。每个子问题至少有一个可追溯的正式证据单元，证据单元可以是图、表、关键公式组、代码输出或已核验文献；每幅采用的图都要有连续编号、题注和正文引用。
 
 ## 执行顺序
 
 1. 读取题目、`题目分析报告.md`、`术语表格.md`、`results/创新证据清单.json`、条件触发的 `results/竞争性搜索账本.json`、`results/图表论证清单.json`、全部真实运行表格、图和代码。
-2. 核对 `results/创新证据清单.json` 与 `results/竞争性搜索账本.json`（如有）的 SHA-256 与 `P2` 审计回执输入快照一致：一致 → 沿用 `P2` 审计回执，不重跑审计；不一致 → `P2` PASS 已因输入变化失效，返回编程手重跑对应审计并复验 `P2`。只允许把 `ADOPTED` 项写成创新；`HYPOTHESIS/PROTOTYPED` 只能留在内部过程，`VERIFIED` 可作为普通方法证据但不得自动进入摘要。竞赛型只有 `PROVEN_OPTIMAL` 可写“最优”，其他停止形态统一写“当前最好已知方案”，并披露 gap、预算停止或未探索前沿。再建立内部 Claim-Evidence 映射和论文大纲，为每个子问题列出核心主张及其公式、结果表、图、代码输出或已核验文献；逐项决定 `KEEP/MERGE/APPENDIX/DROP`。
+2. 核对 `results/创新证据清单.json` 与 `results/竞争性搜索账本.json`（如有）的 SHA-256 与 `P2` 审计回执输入快照一致：一致 → 沿用 `P2` 审计回执，不重跑审计；不一致 → `P2` PASS 已因输入变化失效，返回编程手重跑对应审计并复验 `P2`。只允许把 `ADOPTED` 项写成创新；`HYPOTHESIS/PROTOTYPED` 只能留在内部过程，`VERIFIED` 可作为普通方法证据但不得自动进入摘要。竞赛型只有 `PROVEN_OPTIMAL` 可写“最优”，其他停止形态统一写“当前最好已知方案”，并披露 gap、预算停止或未探索前沿。再建立内部 Claim-Evidence 映射和论文大纲，为每个子问题列出核心主张及其公式、结果表、图、代码输出或已核验文献；逐项决定 `KEEP/MERGE/APPENDIX/DROP`。**开始写作前必须读取 `references/终审清单.md`（未读视为未执行本步）**，写作中按 A 类/B 类协议随时核验，不等到交付前。
 3. 在开始长篇正文和双格式排版前，派发独立质检 Subagent 执行 `W1` 证据大纲门禁；未返回 `PASS` 不得先写后补。
 4. 按官方结构写完整正文，引用由双引擎搜索结果和原始出版页面核验。
-5. 默认先确定同一份正文、数据、图表和参考文献，再生成 Word；用户显式要求 LaTeX 时同时生成 LaTeX，禁止两份论文出现不同结论。
+5. 先确定权威正文、数据、图表和参考文献，再生成用户要求的格式；双格式共享同一证据源，禁止出现不同结论。
 6. Word 使用 `../../../tools/docx/SKILL.md` 构建 DOCX，公式使用原生 OMML；已有完整 LaTeX 主稿时可通过 `convert_latex` 生成内容一致的 Word 初稿，再按官方 DOCX 模板修正。LaTeX（可选）使用 `../../../tools/latex/SKILL.md` 复制完整官方模板项目、填充源码并真实编译 PDF。
-7. 检查 Word 的结构、篇幅、公式、图表、全部子问题覆盖、编号引用、参考文献和实际渲染页数。用户显式要求 LaTeX 时，还必须消除编译错误及未解析的引用，核对权威资源—源码—PDF 哈希、PDF 总页数、正文页数、附录边界、字体嵌入、空白页、页面尺寸和图片 DPI；所有预警必须修正，或根据当届官方规则记录明确覆盖理由后才能继续。页数超限只允许内容级解决（删、并、移段落或图表格），不允许改行距/图宽压版面（排版规格已前置冻结，见 `references/论文格式规范.md`）。
+7. 对每种请求格式运行其工具 `SKILL.md` 规定的全部必做验证。所有预警必须修正，或根据当届官方规则记录明确覆盖理由后才能继续。页数超限只允许内容级解决（删、并、移段落或图表格），不允许改行距/图宽压版面（排版规格已前置冻结，见 `references/论文格式规范.md`）。
 8. 完成下列确定性门禁后（含按 `references/终审清单.md` 运行的确定性终审 lint：`python "<SKILL_ROOT>/references/roles/论文手/scripts/review_lint.py" --paper "<PROJECT_ROOT>/完整论文.docx|完整论文-LaTeX/main.tex" --results "<PROJECT_ROOT>/results"`，退出码非 0 即 `FAIL`），派发独立质检 Subagent 执行 `W2` 论文终检；未返回 `PASS` 不得宣称完成或交付论文。
 
 ## 阶段内独立门禁
@@ -95,13 +94,10 @@ description: 根据题目、建模分析和真实代码结果生成完整 Word �
 
 本节为**最终冻结**时的交付门禁；论文修改/迭代期间不重复执行（见「论文修改/再稿模式」），用户确认最终版本后一次性运行。
 
-交付 Word 时依次运行：
+先运行内容与竞争性审计：
 
 ```powershell
 python "<SKILL_ROOT>/references/roles/innovation-special/scripts/innovation_audit.py" "<PROJECT_ROOT>/results/创新证据清单.json" --project-root "<PROJECT_ROOT>" --strict
-python "<SKILL_ROOT>/tools/docx/scripts/paper_format.py" validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数>
-python "<SKILL_ROOT>/tools/docx/scripts/office/validate.py" "<PROJECT_ROOT>/完整论文.docx"
-python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJECT_ROOT>/完整论文.docx"
 ```
 
 存在竞赛型子问题时，在文档构建命令前追加：
@@ -110,19 +106,11 @@ python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJEC
 python "<SKILL_ROOT>/references/roles/innovation-special/scripts/challenge_audit.py" "<PROJECT_ROOT>/results/竞争性搜索账本.json" --project-root "<PROJECT_ROOT>" --questions <竞赛型题号...> --strict
 ```
 
-最后一条仅适用于由 `equations.py generate/convert-latex` 生成的 DOCX；若 Word 由 `paper_format.py` 直接构建，则改为核对其自身质量报告和复现清单。交付 LaTeX 时依次运行：
-
-```powershell
-python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" doctor --engine xelatex --bibliography-backend <none|bibtex|biber> --need-pandoc
-python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" build "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" --engine xelatex --publish "<PROJECT_ROOT>/完整论文.pdf"
-python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT>/完整论文-LaTeX/main.tex" --pdf "<PROJECT_ROOT>/完整论文.pdf" --quality-checks --questions q1 q2 q3 --min-image-dpi 300 --max-pages <当届官方正文上限> --body-start-page <正文起始页> --appendix-start-page <附录起始页>
-```
-
-根据实际子问题和官方模板替换 `--questions`、引擎、参考文献后端、正文起始页、附录起始页及正文页数上限；没有附录时省略 `--appendix-start-page`。复制权威代码或图表到 LaTeX 项目后，先按 LaTeX 工具说明执行 `bind`，再编译和校验。构建警告默认阻断 `完整论文.pdf` 发布；只有已核对警告才能同时提供 `--allow-warning` 与 `--override-reason`。降低默认质量目标也必须通过 `--override-reason` 记录官方条款或用户要求。任一命令退出码非零即回到论文构建步骤修正；缺少运行环境即明确报告阻塞，不得交付未通过版本。最终回复必须报告篇幅、PDF 总页数、正文页数、公式数、图数、表数、逐题正式证据覆盖、引用核验、资源/源码/PDF 哈希绑定和全部命令退出码。
+随后按请求格式读取并执行唯一权威清单：Word 用 `../../../tools/docx/SKILL.md` 的「必做验证」，LaTeX/PDF 用 `../../../tools/latex/SKILL.md` 的环境诊断、构建与校验。不要在角色文件或工作流程中维护第二套命令。根据实际子问题和官方模板传入题号、引擎、页数与附录边界；任一命令非零即修正，缺少环境则报告阻塞。最终回复报告实际命令、退出码、篇幅/页数、逐题证据覆盖、引用核验和资源哈希。
 
 上述命令只完成作者侧技术校验，不替代 `W2` 独立验收。
 
-- **分歧报告幕也是完成状态**：完成门禁与 `W2` 前，对每处分歧报告幕核对四项——区间完整、各方证据列明、差异量化、有"无物理依据选择其一"的明确声明。满足即视为完成，**不要求解决幕**。
+- **受限结果的交付边界**：对每处受限结果核对区间、各方证据、差异量化和未辨识声明。若题目答案合同仍未满足，只能标为受限交付，不得宣称完整解决。
 - 论文中任何单一数值的"解决"结论，其口径必须是预判摘要中承诺的路径；未闭环的矛盾只能以分歧报告幕存在，不得伪装成点估计。
 
 ## 何时加载
@@ -139,7 +127,7 @@ python "<SKILL_ROOT>/tools/latex/scripts/latex_paper.py" validate "<PROJECT_ROOT
 | 评分导向自检（复杂题必做） | `references/评分导向自检.md` |
 | 创新证据与克制表达（只消费 `ADOPTED`，不进入发现/原型流程） | `../innovation-special/references/创新证据协议.md` |
 | 竞赛型结果、停止证书和最优措辞 | `../../竞争型问题协议.md` |
-| 交付前 | `references/终审清单.md`、`references/自审框架.md` |
+| 交付前（必读） | `references/终审清单.md`、`references/自审框架.md` |
 | 阶段内独立验收 | `../../../references/Subagent调度.md` |
 
 内部分析表、核对清单和临时 Markdown 不作为交付物。

@@ -131,11 +131,11 @@ python scripts/comment.py "<PROJECT_ROOT>/unpacked" 1 "回复意见" --parent 0
 ## 必做验证
 
 ```powershell
-python scripts/check_env.py
-python scripts/self_check.py
-python scripts/office/validate.py "<PROJECT_ROOT>/完整论文.docx"
-python scripts/paper_format.py validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数>
-python scripts/equations.py verify-conversion "<PROJECT_ROOT>/完整论文.docx"
+python "<SKILL_ROOT>/tools/docx/scripts/check_env.py"
+python "<SKILL_ROOT>/tools/docx/scripts/self_check.py"
+python "<SKILL_ROOT>/tools/docx/scripts/office/validate.py" "<PROJECT_ROOT>/完整论文.docx"
+python "<SKILL_ROOT>/tools/docx/scripts/paper_format.py" validate "<PROJECT_ROOT>/完整论文.docx" --rendered-pages <DOCX实际渲染页数> --official-max-pages <当届官方正文上限> --min-content-units <W1篇幅预算下限> --target-pages <W1目标页数>
+python "<SKILL_ROOT>/tools/docx/scripts/equations.py" verify-conversion "<PROJECT_ROOT>/完整论文.docx"
 ```
 
-`verify-conversion` 仅适用于由本工具的 Pandoc 转换生成、带 `.conversion.json` 的 DOCX；直接由 `paper_format.py` 构建时省略。`paper_format.py validate` 输出结构化指标，并在官方前置结构、篇幅质量目标、公式/表数量、图表编号与正文引用、参考文献双向对应或实际页数任一不满足时返回非零退出码。图数由论文主张—证据映射决定，不设统一最低值；每个子问题的证据覆盖由论文手 `W1/W2` 和 `results/图表论证清单.json` 检查。CUMCM 默认的 15000 字词单位和约 20 页只是质量目标。以 2026 年官方规范为例，正文不超过 30 页才是硬约束。只有当届官方规则或用户明确要求允许偏离时才能调整目标并记录依据。结构校验后，把 DOCX 渲染成 PDF 或图片抽检分页、公式、表格、图片、页眉页脚和字体替换。
+`verify-conversion` 仅适用于由本工具的 Pandoc 转换生成、带 `.conversion.json` 的 DOCX；直接由 `paper_format.py` 构建时省略。`paper_format.py validate` 不设跨竞赛通用的最低字数、页数、公式或表格数；把当届官方上限和 `W1` 已确认的篇幅/证据预算显式传入。图数由主张—证据映射决定，每个子问题的覆盖由 `W1/W2` 和图表论证清单检查。结构校验后，把 DOCX 渲染成 PDF 或图片抽检版面。

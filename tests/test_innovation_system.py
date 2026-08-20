@@ -256,7 +256,7 @@ class InnovationPolicyTests(unittest.TestCase):
         self.assertIn("innovation_audit.py", programming)
         self.assertIn("innovation_audit.py", writing)
         self.assertLess(programming.index("innovation_audit.py"), programming.index("执行 `P2`"))
-        self.assertLess(writing.index("先运行创新审计"), writing.index("执行 `W1`"))
+        self.assertLess(writing.index("`P2` 审计回执"), writing.index("执行 `W1`"))
 
     def test_physical_geometry_requires_proof_not_just_a_figure(self):
         text = (

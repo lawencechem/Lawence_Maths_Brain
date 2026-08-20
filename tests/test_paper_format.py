@@ -65,11 +65,24 @@ class PaperFormatTests(unittest.TestCase):
     def test_quality_validation_reports_length_formula_table_and_page_gaps(self):
         doc = self._front_matter()
 
-        issues = pf.validate_paper_structure(doc)
+        issues = pf.validate_paper_structure(
+            doc,
+            min_content_units=1200,
+            min_equations=2,
+            min_tables=1,
+            target_pages=10,
+        )
 
-        for expected in ("15000", "公式", "表", "渲染页数"):
+        for expected in ("1200", "公式", "表", "渲染页数"):
             self.assertTrue(any(expected in issue for issue in issues), expected)
         self.assertFalse(any("仅检测到 0 幅图" in issue for issue in issues))
+
+    def test_no_cross_competition_minimums_without_explicit_budget(self):
+        doc = self._front_matter()
+
+        issues = pf.validate_paper_structure(doc, rendered_pages=1)
+
+        self.assertFalse(any("低于" in issue and "质量目标" in issue for issue in issues))
 
     def test_table_caption_must_be_referenced_in_body(self):
         doc = self._front_matter()
@@ -135,6 +148,7 @@ class PaperFormatTests(unittest.TestCase):
             min_figures=0,
             min_tables=0,
             rendered_pages=31,
+            official_max_pages=30,
         )
 
         self.assertTrue(any("官方上限" in issue and "30" in issue for issue in issues))
@@ -150,11 +164,15 @@ class PaperFormatTests(unittest.TestCase):
             path = Path(temporary) / "完整论文.docx"
             self._front_matter().save(path)
 
-            report = pf.validate_document(path, rendered_pages=7)
+            report = pf.validate_document(
+                path,
+                rendered_pages=7,
+                min_content_units=1200,
+            )
 
         self.assertFalse(report["passed"])
-        self.assertLess(report["metrics"]["content_units"], 15000)
-        self.assertTrue(any("15000" in issue for issue in report["issues"]))
+        self.assertLess(report["metrics"]["content_units"], 1200)
+        self.assertTrue(any("1200" in issue for issue in report["issues"]))
 
 
 if __name__ == "__main__":

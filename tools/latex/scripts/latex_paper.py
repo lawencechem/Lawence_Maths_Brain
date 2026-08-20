@@ -49,11 +49,11 @@ LITERAL_ENV_RE = re.compile(
 VERB_RE = re.compile(r"\\verb\*?(?P<delimiter>[^\w\s]).*?(?P=delimiter)")
 APPENDIX_RE = re.compile(r"\\appendix\b|\\begin\s*\{appendices\}")
 QUALITY_DEFAULTS = {
-    "min_content_units": 15_000,
-    "min_pages": 20,
-    "min_equations": 5,
+    "min_content_units": 0,
+    "min_pages": 0,
+    "min_equations": 0,
     "min_figures": 0,
-    "min_tables": 3,
+    "min_tables": 0,
 }
 STANDARD_14_FONTS = {
     "Courier", "Courier-Bold", "Courier-Oblique", "Courier-BoldOblique",

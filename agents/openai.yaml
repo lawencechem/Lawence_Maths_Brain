@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模竞赛"
+  short_description: "数学建模竞赛全流程协作：题意分析、模型、代码验证与论文交付"
+  default_prompt: "使用 $math-modeling 完成当前数学建模题目的建模、验证与论文交付。"
+
+policy:
+  allow_implicit_invocation: true

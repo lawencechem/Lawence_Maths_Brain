@@ -115,7 +115,7 @@ setup_style(journal='general', lang='zh')            # 中文宋体/Times 混排
 3. **视觉层**：
    - `tools/figure/scripts/visual_qa.render_preview(fig, 'figs/_preview.png')` 渲预览，`tools/figure/scripts/visual_qa.audit_layout(fig)` 程序抓缺字/裁切/刻度重叠/**文字-文字重叠**（程序只查文字-文字；文字压线/压数据点属感知问题，由读图复核）
    - `audit_layout(fig)` 固定跑国赛主题合规——程序抓刻度上限/禁用 jet/rainbow 等有害色图/色板白名单（Okabe-Ito+品牌色）/网格样式（见 `design_theory.md` §13 五坑）
-   - 用 Read 工具读 PNG，对照 `tools/figure/references/quality/visual_review.md` 的 8 项清单核对
+   - 使用当前 Agent 可用的图像查看能力读 PNG（Claude Code 可用 `Read`，Codex 可用 `view_image`，其他环境使用等价图像查看工具），对照 `tools/figure/references/quality/visual_review.md` 的 8 项清单核对
    - 发现问题 → 回改 → 重渲 → 再读，最多 3 轮
 
 ### 第 8 步：导出

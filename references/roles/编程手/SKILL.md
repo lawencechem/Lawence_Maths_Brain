@@ -23,7 +23,7 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 - `results/图表论证清单.json`，记录每个正式证据单元的主张、来源、载体、视觉角色、落点、前后论述和采用决策。
 - `results/复现清单.json`。
 - `results/创新证据清单.json`；允许 `items` 为空，不为满足数量制造创新。
-- `results/竞争性搜索账本.json`；仅在题目分析报告含 `competitive` 子问题时创建，复制并核对建模报告的 `decision_space_audit`，记录 baseline、内部标尺、incumbent、带 `freedom_ref` 的结构性挑战、预算和停止证书。
+- `results/竞争性搜索账本.json`；仅在题目分析报告含 `competitive` 子问题时创建，复制并核对建模报告的 `decision_space_audit` 和 `model_contract_audit`，记录 baseline、内部标尺、incumbent 严格合同认证、带 `freedom_ref` 的结构性挑战、预算和停止证书。
 
 ## 执行顺序
 
@@ -32,9 +32,9 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
    - Python：`python "<SKILL_ROOT>/references/roles/编程手/scripts/check_env.py" --features data visualization optimization`
    - MATLAB 求解：`check_matlab_env(["data","optimization"])`；正式配图另行检查 Python/Matplotlib/NetworkX 与 GeoGebra。
 2.5 估算计算量。预计耗时、内存或规模会阻碍完整求解时，按真实负载选择跨时间步 numpy 向量化、稀疏计算、并行或 GPU 加速；加速后必须与合适的串行或高保真基线核对，容差由模型精度和量纲确定，不得套用固定阈值或改变模型结果。
-3. **开始求解前必须读取 `references/验证完备性.md`（未读视为未执行本步；核心反演/估计与多口径差异按本地 P4 处理）**。实现数据读取、预处理和核心求解链，用真实输入或结构等价小实例跑通从 `PROJECT_ROOT` 执行的最小命令；任何结论必须来自真实输出。
+3. **开始求解前必须读取 `references/验证完备性.md`（未读视为未执行本步；核心反演/估计与多口径差异按本地 P4 处理）**。实现数据读取、预处理和核心求解链，用真实输入或结构等价小实例跑通从 `PROJECT_ROOT` 执行的最小命令；任何结论必须来自真实输出。在 `P1` 前扫描代码中的代理判据、`clip/max/min/where`、饱和与越界延拓，按 `../innovation-special/references/判据语义与边界审计.md` 逐项回指建模合同来源。
 4. 在全量计算、参数扫描和正式出图前，派发独立质检 Subagent 执行 `P1` 最小可运行结果门禁；实现问题由编程手修正，模型合同问题携证据返回建模手。未返回 `PASS` 不得继续扩展。
-5. 按 `../innovation-special/SKILL.md` 把题目分析报告中的候选登记到 `results/创新证据清单.json`。先完整运行合理基线；达标型按验证风险收敛。竞赛型按 `../../竞争型问题协议.md` 创建 `results/竞争性搜索账本.json`，先把建模报告的领域关系、四类自由度、重复对象和聚合假设写入 `decision_space_audit`，建立内部标尺并冻结可行 incumbent，再在隔离分支挑战目标口径、决策表示、结构分解、模型信息或求解结构。表示/分解挑战必须用 `freedom_ref` 指向审计项。**每次决策表示/求解结构挑战前，按 `../../算法选择双源对照.md` 执行双源对照（强制查库匹配 → 独立思考 → 碰头裁决），把 `source_reconciliation` 写入对应挑战条目**；库有 AI 无的盲区项默认最小原型或证据性拒绝。高竞争价值候选在预算内必须最小原型化；按实际证据更新为 `PROTOTYPED/VERIFIED/ADOPTED/DROPPED`。
+5. 按 `../innovation-special/SKILL.md` 把题目分析报告中的候选登记到 `results/创新证据清单.json`。先完整运行合理基线；达标型按验证风险收敛。竞赛型按 `../../竞争型问题协议.md` 创建 `results/竞争性搜索账本.json`，先把建模报告的自由度/聚合假设写入 `decision_space_audit`，把判据语义、状态边界、代理关系和认证计划写入 `model_contract_audit`，建立内部标尺并冻结可行 incumbent，再在隔离分支挑战目标口径、决策表示、结构分解、模型信息或求解结构。表示/分解挑战必须用 `freedom_ref` 指向审计项。每次 incumbent 晋升前必须用严格合同重新计分，对贴边/代理驱动候选记录边界穿越、活跃约束和代理差值。**每次决策表示/求解结构挑战前，按 `../../算法选择双源对照.md` 执行双源对照（强制查库匹配 → 独立思考 → 碰头裁决），把 `source_reconciliation` 写入对应挑战条目**；库有 AI 无的盲区项默认最小原型或证据性拒绝。高竞争价值候选在预算内必须最小原型化；按实际证据更新为 `PROTOTYPED/VERIFIED/ADOPTED/DROPPED`。
 6. 从题目分析报告提取全部子问题并规范为 `q1…qN`，读取 `../../../references/视觉论证与配图策略.md`，先建立 `results/图表论证清单.json`。对每个候选证据先判断文字、公式、表格、数据图或非数据图哪个最直接；无明确读者疑问、核心主张和证据来源时不画图。
 7. 趋势、分布、误差、对比、收敛和敏感性等数据图加载 `../../../tools/figure/SKILL.md`；机理、几何、流程、架构和拓扑图加载 `../../../tools/diagram/SKILL.md`。NetworkX 只建立离散结构；连续二维/三维几何优先使用 GeoGebra Classic，无法自动渲染时输出逐行指令与生成说明，Matplotlib 作为自动后备。复杂判定/算法流程图（判定树、多分支判据、算法流程）优先使用 Mermaid，以 `.mmd` 为可编辑源、渲染失败时交付源码与渲染说明；几何图不落入 Mermaid；MATLAB 不进入正式配图路由。
 8. Matplotlib 正式候选图使用 `../../../tools/figure/scripts/export_figure.py` 导出；GeoGebra 图按 `../../../tools/diagram/SKILL.md` 保存源文件、指令和图片。显式固定最终尺寸且禁用 `bbox_inches="tight"`。先运行 `check_figure.py`，再运行带 `--manifest` 和全部 `--questions` 的 `figure_audit.py --strict`；实际打开彩色 PNG 和灰度预览检查语义、层级、缺字、裁切、遮挡、颜色、尺度和面板一致性。有问题则改源文件或指令、重跑、重审，不能直接修改位图。
@@ -44,8 +44,8 @@ description: 数学建模的 Python 或 MATLAB 求解实现、运行、表格输
 
 ## 阶段内独立门禁
 
-- `P1`：质检 Subagent 在隔离环境或只读副本中执行最小命令，核对退出码、输入到结果的追溯、单位、数值范围、关键约束和 `M1` 模型合同。它是纵向切片，不要求完整图表或最终性能。
-- `P2`：代码、结果、创新证据清单、竞争性搜索账本（如有）、候选证据池、图表论证清单和复现清单冻结后，质检 Subagent 独立运行唯一复现命令并核对输入哈希、种子、关键数值、边界、量纲、每个子问题的正式证据覆盖及文件完整性。逐项检查 `VERIFIED/ADOPTED` 的代码、证明、基线、量化结果和失效边界；对竞赛型逐项核对 `decision_space_audit` 与报告一致、聚合假设均有处置、表示挑战的 `freedom_ref` 有效，以及内部标尺、incumbent 晋升、预算和停止证书，禁止把可行或任意一次低价值挑战当成完成。机械图审使用带 `--manifest` 和全部 `--questions` 的 `figure_audit.py --strict`；Subagent 负责实际读图，检查图是否回答登记的读者疑问、是否与模型/数据一致、放置建议和图后推论是否成立，而不是只确认文件能打开。
+- `P1`：质检 Subagent 在隔离环境或只读副本中执行最小命令，核对退出码、输入到结果的追溯、单位、数值范围、关键约束和 `M1` 模型合同，并扫描代理判据、裁剪/饱和及边界延拓的来源。它是纵向切片，不要求完整图表或最终性能。
+- `P2`：代码、结果、创新证据清单、竞争性搜索账本（如有）、候选证据池、图表论证清单和复现清单冻结后，质检 Subagent 独立运行唯一复现命令并核对输入哈希、种子、关键数值、边界、量纲、每个子问题的正式证据覆盖及文件完整性。逐项检查 `VERIFIED/ADOPTED` 的代码、证明、基线、量化结果和失效边界；对竞赛型逐项核对 `decision_space_audit` 与 `model_contract_audit` 与报告一致、代理与严格判据差值已处置、边界穿越已审计、incumbent 已通过严格合同认证、聚合假设均有处置、表示挑战的 `freedom_ref` 有效，以及内部标尺、incumbent 晋升、预算和停止证书，禁止把可行或任意一次低价值挑战当成完成。机械图审使用带 `--manifest` 和全部 `--questions` 的 `figure_audit.py --strict`；Subagent 负责实际读图，检查图是否回答登记的读者疑问、是否与模型/数据一致、放置建议和图后推论是否成立，而不是只确认文件能打开。
 
 两次门禁均按 `../../../references/Subagent调度.md` 返回证据；被审代码、数据或参数发生实质变化时重跑受影响门禁。
 

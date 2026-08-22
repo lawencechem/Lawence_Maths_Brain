@@ -26,6 +26,7 @@ Markdown 路径按其所在文件解析；跨层引用优先写完整的 `SKILL_
 | 创新专项（自由发散/证据收敛） | `roles/innovation-special/SKILL.md` | 建模/编程/论文 |
 | 创新元能力（双表示/尺度/结构/反例） | `roles/innovation-special/元能力.md` | 发现跨题结构时按需读取 |
 | 决策空间完备性（关系映射/自由度/聚合假设） | `roles/innovation-special/references/决策空间完备性.md` | 控制、策略、多主体或新增/重复对象 |
+| 判据语义与边界审计（代理/裁剪/incumbent 认证） | `roles/innovation-special/references/判据语义与边界审计.md` | 覆盖、遮挡、保护、到达、阈值、延展对象或动态边界 |
 | 物理几何简化与证明 | `roles/innovation-special/references/物理几何简化.md` | 物理或几何候选 |
 | 求解创新路由 | `roles/innovation-special/references/求解创新路由.md` | 算法简化或求解改进 |
 | 创新证据协议 | `roles/innovation-special/references/创新证据协议.md` | 原型、P2、W1、W2 |

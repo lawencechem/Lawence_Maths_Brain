@@ -14,7 +14,7 @@ scipilot-figure-skill :: visual_qa.py
 核心能力
 --------
 - ``render_preview(fig_or_path, out_png, dpi)`` —— 渲一张中分辨率 PNG，
-  供 AI 用 Read 工具读图复核（矢量 PDF 没法直接"看像素重叠"，必须先栅格化）。
+  供具备图像查看能力的 Agent 读图复核（Claude Code 可用 Read，Codex 可用 view_image；矢量 PDF 没法直接"看像素重叠"，必须先栅格化）。
 - ``audit_layout(fig)`` —— 返回 ``[(severity, msg), ...]``：
   * **缺字**（FAIL）：渲染时同时拦截 matplotlib 的 warnings 与 logging 两条
     告警通道，任一报 "missing from font" 即判定成图会出方框/乱码。
@@ -390,7 +390,7 @@ def _demo() -> int:
     issues = audit_layout(fig)
     print_report(issues)
     out = render_preview(fig, "./visual_qa_demo.png", dpi=120)
-    print(f"\n预览已写出：{out}（可用 Read 工具读图复核）")
+    print(f"\n预览已写出：{out}（请用当前 Agent 的图像查看工具复核，例如 Codex view_image 或 Claude Read）")
     print("注：缺字检测只在中文未配字体等情况下才会 FAIL；本 demo 主要展示裁切+重叠。")
     return 0
 

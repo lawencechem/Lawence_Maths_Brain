@@ -52,6 +52,8 @@ VALID_STOP_REASONS = {
     "DIMINISHING_RETURNS",
     "BLOCKED_BY_CONSTRAINT",
 }
+VALID_CONTRACT_SOURCES = {"PROBLEM", "DERIVED", "EXTERNAL", "MODELING_CHOICE"}
+VALID_PROXY_GAP_STATUSES = {"NOT_USED", "PASS", "FAIL", "UNRESOLVED"}
 
 
 def _nonempty(mapping: dict[str, Any], key: str) -> bool:
@@ -129,8 +131,8 @@ def audit_ledger(
 
     if not isinstance(ledger, dict):
         return {"ok": False, "issues": [{"severity": "FAIL", "message": "账本根节点必须是对象"}]}
-    if ledger.get("schema_version") != 1:
-        _issue(issues, "ledger", "schema_version 必须为 1")
+    if ledger.get("schema_version") != 2:
+        _issue(issues, "ledger", "schema_version 必须为 2（新增 model_contract_audit）")
     questions = ledger.get("questions")
     if not isinstance(questions, list) or not questions:
         _issue(issues, "ledger", "questions 必须是非空数组")
@@ -257,6 +259,105 @@ def audit_ledger(
                 elif disposition == "UNTESTED" and not _nonempty(assumption, "frontier"):
                     _issue(issues, assumption_label, "UNTESTED 必须提供 frontier")
                 collapse_records.append((assumption_label, assumption))
+
+        model_contract = question.get("model_contract_audit")
+        if not isinstance(model_contract, dict):
+            _issue(issues, label, "缺少 model_contract_audit 判据语义与边界审计")
+        else:
+            contract_label = f"{label}.model_contract_audit"
+            criterion = model_contract.get("criterion_semantics")
+            if not isinstance(criterion, dict):
+                _issue(issues, contract_label, "criterion_semantics 必须是对象")
+            else:
+                criterion_label = f"{contract_label}.criterion_semantics"
+                for field in ("subject", "object_extent", "quantifier", "acceptance_test", "basis"):
+                    if not _nonempty(criterion, field):
+                        _issue(issues, criterion_label, f"缺少 {field}")
+                if criterion.get("source") not in VALID_CONTRACT_SOURCES:
+                    _issue(
+                        issues,
+                        criterion_label,
+                        "source 必须为 PROBLEM/DERIVED/EXTERNAL/MODELING_CHOICE 之一",
+                    )
+                elif criterion.get("source") == "MODELING_CHOICE":
+                    if not _nonempty(criterion, "alternative_contract"):
+                        _issue(issues, criterion_label, "MODELING_CHOICE 缺少 alternative_contract")
+                    for error in _check_files(
+                        root,
+                        criterion.get("alternative_evidence_files"),
+                        "alternative_evidence_files",
+                    ):
+                        _issue(issues, criterion_label, error)
+
+            boundaries = model_contract.get("state_boundary_conditions")
+            if not isinstance(boundaries, list):
+                _issue(issues, contract_label, "state_boundary_conditions 必须是数组（无则空数组）")
+                boundaries = []
+            if not boundaries and not _nonempty(model_contract, "no_boundary_basis"):
+                _issue(issues, contract_label, "边界表为空时必须提供 no_boundary_basis")
+            for boundary_index, boundary in enumerate(boundaries, 1):
+                boundary_label = f"{contract_label}.state_boundary_conditions[{boundary_index}]"
+                if not isinstance(boundary, dict):
+                    _issue(issues, boundary_label, "必须是对象")
+                    continue
+                for field in ("state", "domain", "boundary", "behavior", "basis"):
+                    if not _nonempty(boundary, field):
+                        _issue(issues, boundary_label, f"缺少 {field}")
+                if boundary.get("source") not in VALID_CONTRACT_SOURCES:
+                    _issue(
+                        issues,
+                        boundary_label,
+                        "source 必须为 PROBLEM/DERIVED/EXTERNAL/MODELING_CHOICE 之一",
+                    )
+                elif boundary.get("source") == "MODELING_CHOICE":
+                    if not _nonempty(boundary, "alternative_behavior"):
+                        _issue(issues, boundary_label, "MODELING_CHOICE 缺少 alternative_behavior")
+                    for error in _check_files(
+                        root,
+                        boundary.get("alternative_evidence_files"),
+                        "alternative_evidence_files",
+                    ):
+                        _issue(issues, boundary_label, error)
+
+            uses_proxy = model_contract.get("uses_proxy_or_surrogate")
+            if not isinstance(uses_proxy, bool):
+                _issue(issues, contract_label, "uses_proxy_or_surrogate 必须为布尔值")
+            elif uses_proxy:
+                for field in ("proxy_relation", "strict_contract"):
+                    if not _nonempty(model_contract, field):
+                        _issue(issues, contract_label, f"使用代理时缺少 {field}")
+                for error in _check_files(
+                    root,
+                    model_contract.get("proxy_validation_evidence_files"),
+                    "proxy_validation_evidence_files",
+                ):
+                    _issue(issues, contract_label, error)
+
+            certification = model_contract.get("incumbent_certification")
+            certification_label = f"{contract_label}.incumbent_certification"
+            if not isinstance(certification, dict):
+                _issue(issues, certification_label, "必须是对象")
+            else:
+                for field in (
+                    "strict_contract_pass",
+                    "boundary_crossings_checked",
+                    "active_constraints_checked",
+                ):
+                    if certification.get(field) is not True:
+                        _issue(issues, certification_label, f"{field} 必须为 true")
+                proxy_gap_status = certification.get("proxy_gap_status")
+                if proxy_gap_status not in VALID_PROXY_GAP_STATUSES:
+                    _issue(
+                        issues,
+                        certification_label,
+                        "proxy_gap_status 必须为 NOT_USED/PASS/FAIL/UNRESOLVED 之一",
+                    )
+                elif uses_proxy is True and proxy_gap_status != "PASS":
+                    _issue(issues, certification_label, "使用代理时 proxy_gap_status 必须为 PASS")
+                elif uses_proxy is False and proxy_gap_status != "NOT_USED":
+                    _issue(issues, certification_label, "未使用代理时 proxy_gap_status 必须为 NOT_USED")
+                for error in _check_files(root, certification.get("evidence_files"), "evidence_files"):
+                    _issue(issues, certification_label, error)
 
         constraints = question.get("hard_constraints")
         if not isinstance(constraints, list) or not constraints:

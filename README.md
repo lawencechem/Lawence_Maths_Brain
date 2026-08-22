@@ -4,7 +4,7 @@
 
 **面向数学建模竞赛与建模项目的三阶段工作流**
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](VERSION)
 [![Agent Skill](https://img.shields.io/badge/Agent-Skill-4B8BBE.svg)](SKILL.md)
 
 **关注我**
@@ -21,7 +21,7 @@
 
 本 Skill 将数学建模任务拆分为 **建模分析 → 代码实现 → 论文撰写** 三个阶段。既可以按顺序完成整道题，也可以只执行其中一个阶段。
 
-当前版本：[`2.3.0`](VERSION)
+当前版本：[`2.4.0`](VERSION)
 
 > 生成的论文仅供参考。论文结构与格式必须以目标竞赛当届官方规则和官方模板为准。
 

@@ -35,6 +35,26 @@ def valid_question(root: Path) -> dict:
             "uses_aggregate_model": False,
             "collapse_assumptions": [],
         },
+        "model_contract_audit": {
+            "criterion_semantics": {
+                "subject": "备选方案",
+                "object_extent": "全部需求节点与完整评价期",
+                "quantifier": "全部硬约束满足，总成本最小",
+                "acceptance_test": "all(constraints) and objective == recomputed_cost",
+                "source": "PROBLEM",
+                "basis": "题面明示全部需求须满足并最小化总成本",
+            },
+            "state_boundary_conditions": [],
+            "no_boundary_basis": "静态资源分配问题，没有时间演化状态",
+            "uses_proxy_or_surrogate": False,
+            "incumbent_certification": {
+                "strict_contract_pass": True,
+                "boundary_crossings_checked": True,
+                "active_constraints_checked": True,
+                "proxy_gap_status": "NOT_USED",
+                "evidence_files": files,
+            },
+        },
         "hard_constraints": [
             {"name": "可行性", "status": "PASS", "evidence_files": files}
         ],
@@ -86,7 +106,7 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
         results.mkdir(exist_ok=True)
         ledger = results / "竞争性搜索账本.json"
         ledger.write_text(
-            json.dumps({"schema_version": 1, "questions": questions}, ensure_ascii=False),
+            json.dumps({"schema_version": 2, "questions": questions}, ensure_ascii=False),
             encoding="utf-8",
         )
         return ledger
@@ -117,6 +137,68 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertFalse(report["ok"])
         self.assertTrue(any("information" in issue["message"] for issue in report["issues"]))
+
+    def test_missing_model_contract_audit_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question.pop("model_contract_audit")
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("model_contract_audit" in issue["message"] for issue in report["issues"]))
+
+    def test_boundary_condition_requires_source_and_behavior(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            contract = question["model_contract_audit"]
+            contract.pop("no_boundary_basis")
+            contract["state_boundary_conditions"] = [{
+                "state": "z",
+                "domain": "z>=0",
+                "boundary": "z=0",
+                "behavior": "到达后停止",
+                "basis": "程序中使用 maximum",
+            }]
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("source" in issue["message"] for issue in report["issues"]))
+
+    def test_proxy_cannot_certify_incumbent_without_strict_comparison(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            contract = question["model_contract_audit"]
+            contract["uses_proxy_or_surrogate"] = True
+            contract["proxy_relation"] = "代表点距离代替完整对象判据"
+            contract["strict_contract"] = "对完整对象范围计算判据"
+            contract["proxy_validation_evidence_files"] = ["evidence.json"]
+            contract["incumbent_certification"]["proxy_gap_status"] = "UNRESOLVED"
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("proxy_gap_status" in issue["message"] for issue in report["issues"]))
+
+    def test_modeling_choice_boundary_requires_alternative_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            contract = question["model_contract_audit"]
+            contract.pop("no_boundary_basis")
+            contract["state_boundary_conditions"] = [{
+                "state": "z",
+                "domain": "z>=0",
+                "boundary": "z=0",
+                "behavior": "到达后夹取在地面",
+                "source": "MODELING_CHOICE",
+                "basis": "物理地面限制",
+            }]
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("alternative_behavior" in issue["message"] for issue in report["issues"]))
 
     def test_representation_risk_is_enforced_independent_of_problem_class_name(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -250,9 +332,9 @@ class CompetitiveSearchPolicyTests(unittest.TestCase):
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertEqual(version, "2.3.0")
-        self.assertIn("## 2.3.0", changelog)
-        self.assertIn("version-2.3.0", readme)
+        self.assertEqual(version, "2.4.0")
+        self.assertIn("## 2.4.0", changelog)
+        self.assertIn("version-2.4.0", readme)
 
 
 if __name__ == "__main__":

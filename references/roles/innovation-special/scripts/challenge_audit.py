@@ -28,6 +28,13 @@ VALID_CHANGE_LEVELS = {
 # 布局/结构/拓扑类题（problem_class="layout_structure"）在非 PROVEN_OPTIMAL 停止前，
 # 必须完成至少一次表示/分解级挑战，否则挑战审计 FAIL（见 竞争型问题协议.md 四、决策表示）。
 REPRESENTATION_LEVELS = {"representation", "decomposition"}
+REQUIRED_FREEDOM_FAMILIES = {"magnitude", "timing", "structure", "information"}
+VALID_COLLAPSE_DISPOSITIONS = {
+    "CHALLENGED",
+    "FIXED_BY_PROBLEM",
+    "EVIDENCE_REJECTED",
+    "UNTESTED",
+}
 VALID_CHALLENGE_STATES = {"PROMOTED", "REJECTED", "INCONCLUSIVE"}
 VALID_RULERS = {
     "lower_bound",
@@ -149,6 +156,107 @@ def audit_ledger(
         if question.get("state") != "CHALLENGE_CLOSED":
             _issue(issues, label, "state 必须为 CHALLENGE_CLOSED")
         problem_class = str(question.get("problem_class") or "").strip()
+        if not problem_class:
+            _issue(issues, label, "缺少 problem_class")
+
+        representation_risk = ""
+        valid_freedom_refs: set[str] = set()
+        collapse_records: list[tuple[str, dict[str, Any]]] = []
+        decision_audit = question.get("decision_space_audit")
+        if not isinstance(decision_audit, dict):
+            _issue(issues, label, "缺少 decision_space_audit 决策空间审计")
+        else:
+            audit_label = f"{label}.decision_space_audit"
+            representation_risk = str(decision_audit.get("representation_risk") or "").strip()
+            if representation_risk not in {"high", "low"}:
+                _issue(issues, audit_label, "representation_risk 必须为 high 或 low")
+            if not _nonempty(decision_audit, "risk_basis"):
+                _issue(issues, audit_label, "缺少 risk_basis")
+
+            families = decision_audit.get("freedom_families")
+            seen_families: set[str] = set()
+            if not isinstance(families, list):
+                _issue(issues, audit_label, "freedom_families 必须是数组")
+                families = []
+            for family_index, family in enumerate(families, 1):
+                family_label = f"{audit_label}.freedom_families[{family_index}]"
+                if not isinstance(family, dict):
+                    _issue(issues, family_label, "必须是对象")
+                    continue
+                family_name = str(family.get("family") or "").strip()
+                if family_name in seen_families:
+                    _issue(issues, family_label, f"family 重复：{family_name}")
+                elif family_name:
+                    seen_families.add(family_name)
+                    valid_freedom_refs.add(family_name)
+                for field in ("family", "assessment", "basis"):
+                    if not _nonempty(family, field):
+                        _issue(issues, family_label, f"缺少 {field}")
+            missing_families = sorted(REQUIRED_FREEDOM_FAMILIES - seen_families)
+            extra_families = sorted(seen_families - REQUIRED_FREEDOM_FAMILIES)
+            if missing_families:
+                _issue(issues, audit_label, f"freedom_families 缺少：{', '.join(missing_families)}")
+            if extra_families:
+                _issue(issues, audit_label, f"freedom_families 含无效类别：{', '.join(extra_families)}")
+
+            entities = decision_audit.get("added_or_repeated_entities")
+            if not isinstance(entities, list):
+                _issue(issues, audit_label, "added_or_repeated_entities 必须是数组（无则空数组）")
+                entities = []
+            for entity_index, entity in enumerate(entities, 1):
+                entity_label = f"{audit_label}.added_or_repeated_entities[{entity_index}]"
+                if not isinstance(entity, dict):
+                    _issue(issues, entity_label, "必须是对象")
+                    continue
+                for field in ("change", "entities", "relative_relations", "model_mapping"):
+                    if not _nonempty(entity, field):
+                        _issue(issues, entity_label, f"缺少 {field}")
+                if not isinstance(entity.get("entities"), list):
+                    _issue(issues, entity_label, "entities 必须是非空数组")
+                if not isinstance(entity.get("relative_relations"), list):
+                    _issue(issues, entity_label, "relative_relations 必须是非空数组")
+
+            uses_aggregate = decision_audit.get("uses_aggregate_model")
+            if not isinstance(uses_aggregate, bool):
+                _issue(issues, audit_label, "uses_aggregate_model 必须为布尔值")
+            assumptions = decision_audit.get("collapse_assumptions")
+            if not isinstance(assumptions, list):
+                _issue(issues, audit_label, "collapse_assumptions 必须是数组（无则空数组）")
+                assumptions = []
+            if uses_aggregate is True and not assumptions:
+                _issue(issues, audit_label, "uses_aggregate_model=true 时 collapse_assumptions 不得为空")
+            assumption_ids: set[str] = set()
+            for assumption_index, assumption in enumerate(assumptions, 1):
+                assumption_label = f"{audit_label}.collapse_assumptions[{assumption_index}]"
+                if not isinstance(assumption, dict):
+                    _issue(issues, assumption_label, "必须是对象")
+                    continue
+                assumption_id = str(assumption.get("assumption_id") or "").strip()
+                if not assumption_id:
+                    _issue(issues, assumption_label, "缺少 assumption_id")
+                elif assumption_id in assumption_ids:
+                    _issue(issues, assumption_label, f"assumption_id 重复：{assumption_id}")
+                else:
+                    assumption_ids.add(assumption_id)
+                    valid_freedom_refs.add(assumption_id)
+                for field in ("expression", "assumption", "alternative"):
+                    if not _nonempty(assumption, field):
+                        _issue(issues, assumption_label, f"缺少 {field}")
+                disposition = assumption.get("disposition")
+                if disposition not in VALID_COLLAPSE_DISPOSITIONS:
+                    _issue(issues, assumption_label, f"disposition 无效：{disposition}")
+                elif disposition == "CHALLENGED" and not _nonempty(assumption, "challenge_id"):
+                    _issue(issues, assumption_label, "CHALLENGED 必须提供 challenge_id")
+                elif disposition == "FIXED_BY_PROBLEM" and not _nonempty(assumption, "basis"):
+                    _issue(issues, assumption_label, "FIXED_BY_PROBLEM 必须提供题面/硬约束 basis")
+                elif disposition == "EVIDENCE_REJECTED":
+                    if not _nonempty(assumption, "basis"):
+                        _issue(issues, assumption_label, "EVIDENCE_REJECTED 必须提供 basis")
+                    for error in _check_files(root, assumption.get("evidence_files"), "evidence_files"):
+                        _issue(issues, assumption_label, error)
+                elif disposition == "UNTESTED" and not _nonempty(assumption, "frontier"):
+                    _issue(issues, assumption_label, "UNTESTED 必须提供 frontier")
+                collapse_records.append((assumption_label, assumption))
 
         constraints = question.get("hard_constraints")
         if not isinstance(constraints, list) or not constraints:
@@ -222,6 +330,7 @@ def audit_ledger(
             _issue(issues, label, "challenges 必须至少包含一个结构性挑战")
             challenges = []
         has_representation_level = False
+        representation_refs: set[str] = set()
         change_descriptions: set[str] = set()
         challenge_ids: set[str] = set()
         for ch_index, challenge in enumerate(challenges, 1):
@@ -240,6 +349,13 @@ def audit_ledger(
                 _issue(issues, ch_label, "change_level 必须是结构、目标、分解、模型、信息或求解结构之一")
             elif challenge.get("change_level") in REPRESENTATION_LEVELS:
                 has_representation_level = True
+                freedom_ref = str(challenge.get("freedom_ref") or "").strip()
+                if not freedom_ref:
+                    _issue(issues, ch_label, "表示/分解级挑战缺少 freedom_ref")
+                elif freedom_ref not in valid_freedom_refs:
+                    _issue(issues, ch_label, f"freedom_ref 未指向决策空间审计项：{freedom_ref}")
+                else:
+                    representation_refs.add(freedom_ref)
             for field in ("target_bottleneck", "structural_change"):
                 if not _nonempty(challenge, field):
                     _issue(issues, ch_label, f"缺少 {field}")
@@ -320,8 +436,24 @@ def audit_ledger(
         elif reason == "BLOCKED_BY_CONSTRAINT" and not _nonempty(stop, "blocking_constraint"):
             _issue(issues, stop_label, "缺少 blocking_constraint")
 
-        if problem_class == "layout_structure" and reason != "PROVEN_OPTIMAL" and not has_representation_level:
-            _issue(issues, stop_label, "布局/结构类题在非 PROVEN_OPTIMAL 停止前必须完成至少一次表示/分解级挑战（change_level=representation/decomposition）")
+        stop_frontiers = stop.get("untested_frontiers")
+        stop_frontiers = stop_frontiers if isinstance(stop_frontiers, list) else []
+        for assumption_label, assumption in collapse_records:
+            disposition = assumption.get("disposition")
+            if disposition == "CHALLENGED":
+                challenge_id = str(assumption.get("challenge_id") or "").strip()
+                if challenge_id not in challenge_ids:
+                    _issue(issues, assumption_label, f"challenge_id 不存在：{challenge_id}")
+                assumption_id = str(assumption.get("assumption_id") or "").strip()
+                if assumption_id and assumption_id not in representation_refs:
+                    _issue(issues, assumption_label, "CHALLENGED 聚合假设未被表示/分解挑战的 freedom_ref 引用")
+            elif disposition == "UNTESTED":
+                frontier = assumption.get("frontier")
+                if frontier not in stop_frontiers:
+                    _issue(issues, assumption_label, "UNTESTED 项必须逐字进入 stop_certificate.untested_frontiers")
+
+        if representation_risk == "high" and reason != "PROVEN_OPTIMAL" and not has_representation_level:
+            _issue(issues, stop_label, "representation_risk=high 时在非 PROVEN_OPTIMAL 停止前必须完成至少一次带 freedom_ref 的表示/分解级挑战")
 
     expected = {str(q).strip() for q in (expected_questions or []) if str(q).strip()}
     missing = sorted(expected - seen)

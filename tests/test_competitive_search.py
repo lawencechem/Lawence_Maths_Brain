@@ -19,8 +19,22 @@ def valid_question(root: Path) -> dict:
     files = ["evidence.json"]
     return {
         "question_id": "q4",
+        "problem_class": "layout_structure",
         "completion_mode": "competitive",
         "state": "CHALLENGE_CLOSED",
+        "decision_space_audit": {
+            "representation_risk": "high",
+            "risk_basis": "全局统一方案可能排除分区表示",
+            "freedom_families": [
+                {"family": "magnitude", "assessment": "资源量可调", "basis": "题面目标"},
+                {"family": "timing", "assessment": "无动态过程", "basis": "静态题"},
+                {"family": "structure", "assessment": "全局或分区待比较", "basis": "存在空间异质性"},
+                {"family": "information", "assessment": "全部输入已知", "basis": "确定性数据"},
+            ],
+            "added_or_repeated_entities": [],
+            "uses_aggregate_model": False,
+            "collapse_assumptions": [],
+        },
         "hard_constraints": [
             {"name": "可行性", "status": "PASS", "evidence_files": files}
         ],
@@ -44,6 +58,7 @@ def valid_question(root: Path) -> dict:
             {
                 "challenge_id": "q4-c1",
                 "change_level": "decomposition",
+                "freedom_ref": "structure",
                 "target_bottleneck": "全局结构受局部最差点支配",
                 "structural_change": "全局统一方案改为分区方案",
                 "status": "PROMOTED",
@@ -80,6 +95,63 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             ledger = self.write_ledger(root, [valid_question(root)])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertTrue(report["ok"], report["issues"])
+
+    def test_missing_decision_space_audit_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question.pop("decision_space_audit")
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("decision_space_audit" in issue["message"] for issue in report["issues"]))
+
+    def test_decision_space_audit_requires_all_four_freedom_families(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question["decision_space_audit"]["freedom_families"] = question["decision_space_audit"]["freedom_families"][:-1]
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("information" in issue["message"] for issue in report["issues"]))
+
+    def test_representation_risk_is_enforced_independent_of_problem_class_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question["problem_class"] = "dynamic_control"
+            question["challenges"][0]["change_level"] = "model"
+            question["challenges"][0].pop("freedom_ref")
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("representation_risk=high" in issue["message"] for issue in report["issues"]))
+
+    def test_aggregate_assumption_must_link_to_representation_challenge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            audit = question["decision_space_audit"]
+            audit["added_or_repeated_entities"] = [{
+                "change": "增加同类执行器",
+                "entities": ["a", "b"],
+                "relative_relations": ["相对时序"],
+                "model_mapping": "独立控制量",
+            }]
+            audit["uses_aggregate_model"] = True
+            audit["collapse_assumptions"] = [{
+                "assumption_id": "a-sync",
+                "expression": "y=2u",
+                "assumption": "完全同步",
+                "alternative": "y=u1+u2(t-tau)",
+                "disposition": "CHALLENGED",
+                "challenge_id": "q4-c1",
+            }]
+            question["challenges"][0]["freedom_ref"] = "a-sync"
+            ledger = self.write_ledger(root, [question])
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertTrue(report["ok"], report["issues"])
 

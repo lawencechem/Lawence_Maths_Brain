@@ -51,7 +51,7 @@ class SubagentProtocolTests(unittest.TestCase):
         root = read("SKILL.md")
         protocol = read("references/Subagent调度.md")
         writing = read("references/roles/论文手/SKILL.md")
-        self.assertIn("默认模式只派发", root)
+        self.assertIn("仅在完整交付、竞赛型搜索、用户要求复查，或存在高影响歧义时", root)
         self.assertIn("可选协作默认关闭", protocol)
         self.assertIn("只有用户明确启用", protocol)
         self.assertIn("用户已明确启用", writing)

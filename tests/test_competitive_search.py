@@ -332,9 +332,9 @@ class CompetitiveSearchPolicyTests(unittest.TestCase):
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertEqual(version, "2.4.0")
-        self.assertIn("## 2.4.0", changelog)
-        self.assertIn("version-2.4.0", readme)
+        self.assertEqual(version, "2.5.0")
+        self.assertIn("## 2.5.0", changelog)
+        self.assertIn("version-2.5.0", readme)
 
 
 if __name__ == "__main__":

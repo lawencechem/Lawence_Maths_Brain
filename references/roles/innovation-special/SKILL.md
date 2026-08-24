@@ -105,4 +105,4 @@ python "<SKILL_ROOT>/references/roles/innovation-special/scripts/innovation_audi
 
 允许清单中没有 `ADOPTED` 项；不允许 `VERIFIED/ADOPTED` 缺少实现、证明、结果或失效边界。审计通过只证明证据合同完整，不能替代独立 `P2/W1/W2` 语义验收。
 
-存在竞赛型子问题时，再按 `../../竞争型问题协议.md` 运行 `scripts/challenge_audit.py`。该审计还会检查 `decision_space_audit`、四类自由度覆盖、聚合假设处置及表示挑战的 `freedom_ref`。创新审计不要求创新数量，挑战审计也不要求一定改进；二者分别防止虚构创新、漏维后达标即停。
+存在竞赛型子问题时，再按 `../../竞争型问题协议.md` 运行 `scripts/challenge_audit.py`。该审计聚焦三个关键门禁：结构探针候选是否处置、表示挑战是否有真实 `representation_delta`、严格判据与 gap 分歧是否得到响应。创新审计不要求创新数量，挑战审计也不要求一定改进。

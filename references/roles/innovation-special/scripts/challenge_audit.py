@@ -53,7 +53,15 @@ VALID_STOP_REASONS = {
     "BLOCKED_BY_CONSTRAINT",
 }
 VALID_CONTRACT_SOURCES = {"PROBLEM", "DERIVED", "EXTERNAL", "MODELING_CHOICE"}
-VALID_PROXY_GAP_STATUSES = {"NOT_USED", "PASS", "FAIL", "UNRESOLVED"}
+VALID_CANDIDATE_DISPOSITIONS = {
+    "CHALLENGED",
+    "FIXED_BY_PROBLEM",
+    "EVIDENCE_REJECTED",
+    "UNTESTED",
+}
+VALID_PROXY_COMPARISON_STATUSES = {"CONSISTENT", "DIVERGENT", "NOT_APPLICABLE"}
+VALID_STRICT_SEARCH_ACTIONS = {"STRICT_IN_LOOP", "STRICT_REOPTIMIZED", "PROXY_REJECTED"}
+LARGE_GAP_TRIGGER = 0.50
 
 
 def _nonempty(mapping: dict[str, Any], key: str) -> bool:
@@ -131,8 +139,8 @@ def audit_ledger(
 
     if not isinstance(ledger, dict):
         return {"ok": False, "issues": [{"severity": "FAIL", "message": "账本根节点必须是对象"}]}
-    if ledger.get("schema_version") != 2:
-        _issue(issues, "ledger", "schema_version 必须为 2（新增 model_contract_audit）")
+    if ledger.get("schema_version") != 3:
+        _issue(issues, "ledger", "schema_version 必须为 3（精简结构门禁）")
     questions = ledger.get("questions")
     if not isinstance(questions, list) or not questions:
         _issue(issues, "ledger", "questions 必须是非空数组")
@@ -161,20 +169,15 @@ def audit_ledger(
         if not problem_class:
             _issue(issues, label, "缺少 problem_class")
 
-        representation_risk = ""
-        valid_freedom_refs: set[str] = set()
+        valid_candidate_refs: set[str] = set()
         collapse_records: list[tuple[str, dict[str, Any]]] = []
+        candidate_records: list[tuple[str, dict[str, Any]]] = []
+        structure_required = False
         decision_audit = question.get("decision_space_audit")
         if not isinstance(decision_audit, dict):
             _issue(issues, label, "缺少 decision_space_audit 决策空间审计")
         else:
             audit_label = f"{label}.decision_space_audit"
-            representation_risk = str(decision_audit.get("representation_risk") or "").strip()
-            if representation_risk not in {"high", "low"}:
-                _issue(issues, audit_label, "representation_risk 必须为 high 或 low")
-            if not _nonempty(decision_audit, "risk_basis"):
-                _issue(issues, audit_label, "缺少 risk_basis")
-
             families = decision_audit.get("freedom_families")
             seen_families: set[str] = set()
             if not isinstance(families, list):
@@ -190,7 +193,6 @@ def audit_ledger(
                     _issue(issues, family_label, f"family 重复：{family_name}")
                 elif family_name:
                     seen_families.add(family_name)
-                    valid_freedom_refs.add(family_name)
                 for field in ("family", "assessment", "basis"):
                     if not _nonempty(family, field):
                         _issue(issues, family_label, f"缺少 {field}")
@@ -240,7 +242,7 @@ def audit_ledger(
                     _issue(issues, assumption_label, f"assumption_id 重复：{assumption_id}")
                 else:
                     assumption_ids.add(assumption_id)
-                    valid_freedom_refs.add(assumption_id)
+                    valid_candidate_refs.add(assumption_id)
                 for field in ("expression", "assumption", "alternative"):
                     if not _nonempty(assumption, field):
                         _issue(issues, assumption_label, f"缺少 {field}")
@@ -259,6 +261,54 @@ def audit_ledger(
                 elif disposition == "UNTESTED" and not _nonempty(assumption, "frontier"):
                     _issue(issues, assumption_label, "UNTESTED 必须提供 frontier")
                 collapse_records.append((assumption_label, assumption))
+
+            structure_probe = decision_audit.get("structure_probe")
+            structure_triggers = decision_audit.get("structure_triggers", [])
+            if not isinstance(structure_triggers, list):
+                _issue(issues, audit_label, "structure_triggers 必须是数组")
+                structure_triggers = []
+            structure_required = bool(entities) or uses_aggregate is True or bool(structure_triggers)
+            if structure_required or structure_probe is not None:
+                probe_label = f"{audit_label}.structure_probe"
+                if not isinstance(structure_probe, dict):
+                    _issue(issues, probe_label, "命中结构信号时必须在黑盒搜索前完成结构探针")
+                else:
+                    if not isinstance(structure_probe.get("observations"), list) or not structure_probe.get("observations"):
+                        _issue(issues, probe_label, "observations 必须是非空数组")
+                    for error in _check_files(root, structure_probe.get("evidence_files"), "evidence_files"):
+                        _issue(issues, probe_label, error)
+                    candidates = structure_probe.get("candidates")
+                    if not isinstance(candidates, list) or not candidates:
+                        _issue(issues, probe_label, "candidates 必须是非空数组")
+                        candidates = []
+                    seen_candidate_refs: set[str] = set()
+                    for candidate_index, candidate in enumerate(candidates, 1):
+                        candidate_label = f"{probe_label}.candidates[{candidate_index}]"
+                        if not isinstance(candidate, dict):
+                            _issue(issues, candidate_label, "必须是对象")
+                            continue
+                        candidate_ref = str(candidate.get("candidate_ref") or "").strip()
+                        if not candidate_ref:
+                            _issue(issues, candidate_label, "缺少 candidate_ref")
+                        elif candidate_ref in seen_candidate_refs:
+                            _issue(issues, candidate_label, f"candidate_ref 重复：{candidate_ref}")
+                        else:
+                            seen_candidate_refs.add(candidate_ref)
+                            valid_candidate_refs.add(candidate_ref)
+                        for field in ("hypothesis", "basis"):
+                            if not _nonempty(candidate, field):
+                                _issue(issues, candidate_label, f"缺少 {field}")
+                        disposition = candidate.get("disposition")
+                        if disposition not in VALID_CANDIDATE_DISPOSITIONS:
+                            _issue(issues, candidate_label, f"disposition 无效：{disposition}")
+                        elif disposition == "CHALLENGED" and not _nonempty(candidate, "challenge_id"):
+                            _issue(issues, candidate_label, "CHALLENGED 必须提供 challenge_id")
+                        elif disposition == "EVIDENCE_REJECTED":
+                            for error in _check_files(root, candidate.get("evidence_files"), "evidence_files"):
+                                _issue(issues, candidate_label, error)
+                        elif disposition == "UNTESTED" and not _nonempty(candidate, "frontier"):
+                            _issue(issues, candidate_label, "UNTESTED 必须提供 frontier")
+                        candidate_records.append((candidate_label, candidate))
 
         model_contract = question.get("model_contract_audit")
         if not isinstance(model_contract, dict):
@@ -326,12 +376,34 @@ def audit_ledger(
                 for field in ("proxy_relation", "strict_contract"):
                     if not _nonempty(model_contract, field):
                         _issue(issues, contract_label, f"使用代理时缺少 {field}")
-                for error in _check_files(
-                    root,
-                    model_contract.get("proxy_validation_evidence_files"),
-                    "proxy_validation_evidence_files",
-                ):
-                    _issue(issues, contract_label, error)
+                comparison = model_contract.get("proxy_strict_comparison")
+                comparison_label = f"{contract_label}.proxy_strict_comparison"
+                if not isinstance(comparison, dict):
+                    _issue(issues, comparison_label, "使用代理时必须记录代理—严格判据的可行性与排序对照")
+                else:
+                    ranking_status = comparison.get("ranking_status")
+                    feasibility_status = comparison.get("feasibility_status")
+                    if ranking_status not in VALID_PROXY_COMPARISON_STATUSES:
+                        _issue(issues, comparison_label, "ranking_status 必须为 CONSISTENT/DIVERGENT/NOT_APPLICABLE")
+                    if feasibility_status not in VALID_PROXY_COMPARISON_STATUSES:
+                        _issue(issues, comparison_label, "feasibility_status 必须为 CONSISTENT/DIVERGENT/NOT_APPLICABLE")
+                    if "NOT_APPLICABLE" in {ranking_status, feasibility_status} and not _nonempty(comparison, "not_applicable_basis"):
+                        _issue(issues, comparison_label, "NOT_APPLICABLE 必须提供 not_applicable_basis")
+                    for error in _check_files(root, comparison.get("evidence_files"), "evidence_files"):
+                        _issue(issues, comparison_label, error)
+                    if "DIVERGENT" in {ranking_status, feasibility_status}:
+                        if comparison.get("strict_search_action") not in VALID_STRICT_SEARCH_ACTIONS:
+                            _issue(
+                                issues,
+                                comparison_label,
+                                "代理与严格判据发生排序/可行性分歧时，严格判据必须进入搜索或代理必须被拒绝",
+                            )
+                        for error in _check_files(
+                            root,
+                            comparison.get("strict_search_evidence_files"),
+                            "strict_search_evidence_files",
+                        ):
+                            _issue(issues, comparison_label, error)
 
             certification = model_contract.get("incumbent_certification")
             certification_label = f"{contract_label}.incumbent_certification"
@@ -345,17 +417,6 @@ def audit_ledger(
                 ):
                     if certification.get(field) is not True:
                         _issue(issues, certification_label, f"{field} 必须为 true")
-                proxy_gap_status = certification.get("proxy_gap_status")
-                if proxy_gap_status not in VALID_PROXY_GAP_STATUSES:
-                    _issue(
-                        issues,
-                        certification_label,
-                        "proxy_gap_status 必须为 NOT_USED/PASS/FAIL/UNRESOLVED 之一",
-                    )
-                elif uses_proxy is True and proxy_gap_status != "PASS":
-                    _issue(issues, certification_label, "使用代理时 proxy_gap_status 必须为 PASS")
-                elif uses_proxy is False and proxy_gap_status != "NOT_USED":
-                    _issue(issues, certification_label, "未使用代理时 proxy_gap_status 必须为 NOT_USED")
                 for error in _check_files(root, certification.get("evidence_files"), "evidence_files"):
                     _issue(issues, certification_label, error)
 
@@ -431,9 +492,10 @@ def audit_ledger(
             _issue(issues, label, "challenges 必须至少包含一个结构性挑战")
             challenges = []
         has_representation_level = False
-        representation_refs: set[str] = set()
         change_descriptions: set[str] = set()
         challenge_ids: set[str] = set()
+        challenge_levels: dict[str, str] = {}
+        challenge_candidate_refs: dict[str, str] = {}
         for ch_index, challenge in enumerate(challenges, 1):
             ch_label = f"{label}.challenges[{ch_index}]"
             if not isinstance(challenge, dict):
@@ -446,21 +508,46 @@ def audit_ledger(
                 _issue(issues, ch_label, f"challenge_id 重复：{challenge_id}")
             else:
                 challenge_ids.add(challenge_id)
+                challenge_levels[challenge_id] = str(challenge.get("change_level") or "")
             if challenge.get("change_level") not in VALID_CHANGE_LEVELS:
                 _issue(issues, ch_label, "change_level 必须是结构、目标、分解、模型、信息或求解结构之一")
             elif challenge.get("change_level") in REPRESENTATION_LEVELS:
                 has_representation_level = True
-                freedom_ref = str(challenge.get("freedom_ref") or "").strip()
-                if not freedom_ref:
-                    _issue(issues, ch_label, "表示/分解级挑战缺少 freedom_ref")
-                elif freedom_ref not in valid_freedom_refs:
-                    _issue(issues, ch_label, f"freedom_ref 未指向决策空间审计项：{freedom_ref}")
+                candidate_ref = str(challenge.get("candidate_ref") or "").strip()
+                if not candidate_ref:
+                    _issue(issues, ch_label, "表示/分解级挑战缺少 candidate_ref")
+                elif candidate_ref not in valid_candidate_refs:
+                    _issue(issues, ch_label, f"candidate_ref 未指向结构探针候选或聚合假设：{candidate_ref}")
+                elif challenge_id:
+                    challenge_candidate_refs[challenge_id] = candidate_ref
+                delta = challenge.get("representation_delta")
+                delta_label = f"{ch_label}.representation_delta"
+                if not isinstance(delta, dict):
+                    _issue(issues, delta_label, "表示/分解挑战必须给出基线到挑战空间的决策表示差量")
                 else:
-                    representation_refs.add(freedom_ref)
-            for field in ("target_bottleneck", "structural_change"):
-                if not _nonempty(challenge, field):
-                    _issue(issues, ch_label, f"缺少 {field}")
-            if _nonempty(challenge, "structural_change"):
+                    for field in ("baseline_decisions", "challenger_decisions"):
+                        if not isinstance(delta.get(field), list) or not delta.get(field):
+                            _issue(issues, delta_label, f"{field} 必须是非空数组")
+                    relations = delta.get("added_or_released_relations")
+                    if not isinstance(relations, list) or not relations:
+                        _issue(issues, delta_label, "added_or_released_relations 必须列出新增或解除的关系/结构")
+                    if not _nonempty(delta, "mechanism"):
+                        _issue(issues, delta_label, "缺少 mechanism")
+                    if _nonempty(delta, "mechanism"):
+                        change_descriptions.add(str(delta["mechanism"]).strip())
+                    if delta.get("same_space_solver_only") is not False:
+                        _issue(issues, delta_label, "同一决策空间内仅更换求解器不构成表示/分解挑战")
+                    for error in _check_files(
+                        root,
+                        delta.get("comparison_evidence_files"),
+                        "comparison_evidence_files",
+                    ):
+                        _issue(issues, delta_label, error)
+            if not _nonempty(challenge, "target_bottleneck"):
+                _issue(issues, ch_label, "缺少 target_bottleneck")
+            if challenge.get("change_level") not in REPRESENTATION_LEVELS and not _nonempty(challenge, "structural_change"):
+                _issue(issues, ch_label, "非表示/分解挑战缺少 structural_change")
+            if challenge.get("change_level") not in REPRESENTATION_LEVELS and _nonempty(challenge, "structural_change"):
                 change_descriptions.add(str(challenge["structural_change"]).strip())
             if challenge.get("status") not in VALID_CHALLENGE_STATES:
                 _issue(issues, ch_label, f"status 无效：{challenge.get('status')}")
@@ -527,6 +614,41 @@ def audit_ledger(
                 _issue(issues, stop_label, "BUDGET_EXHAUSTED 要求 used>=allocated")
             if not stop.get("untested_frontiers"):
                 _issue(issues, stop_label, "预算耗尽时必须列出未探索前沿")
+            gap_assessment = stop.get("gap_assessment")
+            gap_label = f"{stop_label}.gap_assessment"
+            if not isinstance(gap_assessment, dict):
+                _issue(issues, gap_label, "BUDGET_EXHAUSTED 必须说明 gap 是否可计算及如何处置")
+            else:
+                computable = gap_assessment.get("computable")
+                if not isinstance(computable, bool):
+                    _issue(issues, gap_label, "computable 必须为布尔值")
+                elif not computable:
+                    if not _nonempty(gap_assessment, "unknown_basis"):
+                        _issue(issues, gap_label, "gap 不可计算时必须提供 unknown_basis")
+                else:
+                    gap_value = _number(gap_assessment.get("optimality_gap"))
+                    if gap_value is None or gap_value < 0:
+                        _issue(issues, gap_label, "optimality_gap 必须为非负数")
+                    bound_quality = gap_assessment.get("bound_quality")
+                    if bound_quality not in {"INFORMATIVE", "LOOSE"}:
+                        _issue(issues, gap_label, "bound_quality 必须为 INFORMATIVE 或 LOOSE")
+                    if gap_value is not None and gap_value > LARGE_GAP_TRIGGER:
+                        response = gap_assessment.get("response")
+                        if bound_quality == "INFORMATIVE":
+                            challenge_id = str(gap_assessment.get("challenge_id") or "").strip()
+                            if response != "STRUCTURE_CHALLENGE":
+                                _issue(issues, gap_label, "大 gap 且标尺有信息量时必须执行结构/表示挑战")
+                            elif challenge_levels.get(challenge_id) not in REPRESENTATION_LEVELS:
+                                _issue(issues, gap_label, "大 gap 响应的 challenge_id 必须指向表示/分解级挑战")
+                        elif bound_quality == "LOOSE":
+                            if response != "BOUND_REVISED_OR_RETIRED":
+                                _issue(issues, gap_label, "大 gap 来自松界时必须修正或撤销该标尺")
+                            for error in _check_files(
+                                root,
+                                gap_assessment.get("response_evidence_files"),
+                                "response_evidence_files",
+                            ):
+                                _issue(issues, gap_label, error)
         elif reason == "DIMINISHING_RETURNS":
             marginal = _number(stop.get("marginal_gain"))
             threshold = _number(stop.get("marginal_gain_threshold"))
@@ -545,16 +667,36 @@ def audit_ledger(
                 challenge_id = str(assumption.get("challenge_id") or "").strip()
                 if challenge_id not in challenge_ids:
                     _issue(issues, assumption_label, f"challenge_id 不存在：{challenge_id}")
-                assumption_id = str(assumption.get("assumption_id") or "").strip()
-                if assumption_id and assumption_id not in representation_refs:
-                    _issue(issues, assumption_label, "CHALLENGED 聚合假设未被表示/分解挑战的 freedom_ref 引用")
+                elif challenge_levels.get(challenge_id) not in REPRESENTATION_LEVELS:
+                    _issue(issues, assumption_label, "challenge_id 必须指向表示/分解级挑战")
+                else:
+                    assumption_id = str(assumption.get("assumption_id") or "").strip()
+                    if challenge_candidate_refs.get(challenge_id) != assumption_id:
+                        _issue(issues, assumption_label, "challenge_id 对应挑战的 candidate_ref 未指向该聚合假设")
             elif disposition == "UNTESTED":
                 frontier = assumption.get("frontier")
                 if frontier not in stop_frontiers:
                     _issue(issues, assumption_label, "UNTESTED 项必须逐字进入 stop_certificate.untested_frontiers")
 
-        if representation_risk == "high" and reason != "PROVEN_OPTIMAL" and not has_representation_level:
-            _issue(issues, stop_label, "representation_risk=high 时在非 PROVEN_OPTIMAL 停止前必须完成至少一次带 freedom_ref 的表示/分解级挑战")
+        for candidate_label, candidate in candidate_records:
+            disposition = candidate.get("disposition")
+            if disposition == "CHALLENGED":
+                challenge_id = str(candidate.get("challenge_id") or "").strip()
+                if challenge_id not in challenge_ids:
+                    _issue(issues, candidate_label, f"challenge_id 不存在：{challenge_id}")
+                elif challenge_levels.get(challenge_id) not in REPRESENTATION_LEVELS:
+                    _issue(issues, candidate_label, "challenge_id 必须指向表示/分解级挑战")
+                else:
+                    candidate_ref = str(candidate.get("candidate_ref") or "").strip()
+                    if challenge_candidate_refs.get(challenge_id) != candidate_ref:
+                        _issue(issues, candidate_label, "challenge_id 对应挑战的 candidate_ref 未指向该结构候选")
+            elif disposition == "UNTESTED":
+                frontier = candidate.get("frontier")
+                if frontier not in stop_frontiers:
+                    _issue(issues, candidate_label, "UNTESTED 结构候选必须逐字进入未探索前沿")
+
+        if structure_required and reason != "PROVEN_OPTIMAL" and not has_representation_level:
+            _issue(issues, stop_label, "命中结构信号时在非 PROVEN_OPTIMAL 停止前必须完成至少一次带 candidate_ref 的表示/分解级挑战")
 
     expected = {str(q).strip() for q in (expected_questions or []) if str(q).strip()}
     missing = sorted(expected - seen)

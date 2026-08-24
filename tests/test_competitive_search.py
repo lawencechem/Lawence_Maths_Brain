@@ -23,8 +23,6 @@ def valid_question(root: Path) -> dict:
         "completion_mode": "competitive",
         "state": "CHALLENGE_CLOSED",
         "decision_space_audit": {
-            "representation_risk": "high",
-            "risk_basis": "全局统一方案可能排除分区表示",
             "freedom_families": [
                 {"family": "magnitude", "assessment": "资源量可调", "basis": "题面目标"},
                 {"family": "timing", "assessment": "无动态过程", "basis": "静态题"},
@@ -34,6 +32,18 @@ def valid_question(root: Path) -> dict:
             "added_or_repeated_entities": [],
             "uses_aggregate_model": False,
             "collapse_assumptions": [],
+            "structure_triggers": ["空间异质性与分区决策"],
+            "structure_probe": {
+                "observations": ["不同区域的局部瓶颈不同"],
+                "candidates": [{
+                    "candidate_ref": "partition-structure",
+                    "hypothesis": "分区表示可解除全局统一结构的限制",
+                    "basis": "空间异质性使统一结构可能损失目标值",
+                    "disposition": "CHALLENGED",
+                    "challenge_id": "q4-c1",
+                }],
+                "evidence_files": files,
+            },
         },
         "model_contract_audit": {
             "criterion_semantics": {
@@ -51,7 +61,6 @@ def valid_question(root: Path) -> dict:
                 "strict_contract_pass": True,
                 "boundary_crossings_checked": True,
                 "active_constraints_checked": True,
-                "proxy_gap_status": "NOT_USED",
                 "evidence_files": files,
             },
         },
@@ -78,13 +87,21 @@ def valid_question(root: Path) -> dict:
             {
                 "challenge_id": "q4-c1",
                 "change_level": "decomposition",
-                "freedom_ref": "structure",
+                "candidate_ref": "partition-structure",
                 "target_bottleneck": "全局结构受局部最差点支配",
                 "structural_change": "全局统一方案改为分区方案",
                 "status": "PROMOTED",
                 "feasibility_status": "PASS",
                 "metrics": {"总成本": 100.0},
                 "evidence_files": files,
+                "representation_delta": {
+                    "baseline_decisions": ["一个全局方案"],
+                    "challenger_decisions": ["每个分区的局部方案", "共享协调变量"],
+                    "added_or_released_relations": ["解除所有区域共享同一决策的限制"],
+                    "mechanism": "利用空间异质性做分区协调",
+                    "same_space_solver_only": False,
+                    "comparison_evidence_files": files,
+                },
             }
         ],
         "budget": {"allocated": 10, "used": 8, "unit": "min"},
@@ -106,7 +123,7 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
         results.mkdir(exist_ok=True)
         ledger = results / "竞争性搜索账本.json"
         ledger.write_text(
-            json.dumps({"schema_version": 2, "questions": questions}, ensure_ascii=False),
+            json.dumps({"schema_version": 3, "questions": questions}, ensure_ascii=False),
             encoding="utf-8",
         )
         return ledger
@@ -166,7 +183,7 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
         self.assertFalse(report["ok"])
         self.assertTrue(any("source" in issue["message"] for issue in report["issues"]))
 
-    def test_proxy_cannot_certify_incumbent_without_strict_comparison(self):
+    def test_proxy_requires_strict_comparison(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             question = valid_question(root)
@@ -174,12 +191,10 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
             contract["uses_proxy_or_surrogate"] = True
             contract["proxy_relation"] = "代表点距离代替完整对象判据"
             contract["strict_contract"] = "对完整对象范围计算判据"
-            contract["proxy_validation_evidence_files"] = ["evidence.json"]
-            contract["incumbent_certification"]["proxy_gap_status"] = "UNRESOLVED"
             ledger = self.write_ledger(root, [question])
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertFalse(report["ok"])
-        self.assertTrue(any("proxy_gap_status" in issue["message"] for issue in report["issues"]))
+        self.assertTrue(any("proxy_strict_comparison" in issue["message"] for issue in report["issues"]))
 
     def test_modeling_choice_boundary_requires_alternative_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -200,17 +215,19 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
         self.assertFalse(report["ok"])
         self.assertTrue(any("alternative_behavior" in issue["message"] for issue in report["issues"]))
 
-    def test_representation_risk_is_enforced_independent_of_problem_class_name(self):
+    def test_structure_trigger_requires_probe_and_representation_challenge(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             question = valid_question(root)
             question["problem_class"] = "dynamic_control"
+            question["decision_space_audit"].pop("structure_probe")
             question["challenges"][0]["change_level"] = "model"
-            question["challenges"][0].pop("freedom_ref")
+            question["challenges"][0].pop("candidate_ref")
+            question["challenges"][0].pop("representation_delta")
             ledger = self.write_ledger(root, [question])
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertFalse(report["ok"])
-        self.assertTrue(any("representation_risk=high" in issue["message"] for issue in report["issues"]))
+        self.assertTrue(any("结构探针" in issue["message"] for issue in report["issues"]))
 
     def test_aggregate_assumption_must_link_to_representation_challenge(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -232,7 +249,8 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
                 "disposition": "CHALLENGED",
                 "challenge_id": "q4-c1",
             }]
-            question["challenges"][0]["freedom_ref"] = "a-sync"
+            audit["structure_probe"]["candidates"][0]["candidate_ref"] = "a-sync"
+            question["challenges"][0]["candidate_ref"] = "a-sync"
             ledger = self.write_ledger(root, [question])
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertTrue(report["ok"], report["issues"])
@@ -301,6 +319,87 @@ class CompetitiveSearchAuditTests(unittest.TestCase):
             report = challenge_audit.audit_ledger(ledger, root, ["q4"])
         self.assertFalse(report["ok"])
         self.assertTrue(any("PROMOTED" in issue["message"] for issue in report["issues"]))
+
+    def test_repeated_entities_require_structure_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            audit = question["decision_space_audit"]
+            audit.pop("structure_probe")
+            audit["structure_triggers"] = []
+            audit["added_or_repeated_entities"] = [{
+                "change": "多个同类资源",
+                "entities": ["a", "b"],
+                "relative_relations": ["分配"],
+                "model_mapping": "资源到任务的分配变量",
+            }]
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("结构探针" in issue["message"] for issue in report["issues"]))
+
+    def test_same_space_solver_swap_is_not_representation_challenge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            delta = question["challenges"][0]["representation_delta"]
+            delta["same_space_solver_only"] = True
+            delta["added_or_released_relations"] = []
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("同一决策空间" in issue["message"] for issue in report["issues"]))
+
+    def test_generic_freedom_family_cannot_replace_probe_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question["challenges"][0]["candidate_ref"] = "structure"
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("candidate_ref 未指向" in issue["message"] for issue in report["issues"]))
+
+    def test_proxy_ranking_divergence_requires_strict_search(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            contract = question["model_contract_audit"]
+            contract["uses_proxy_or_surrogate"] = True
+            contract["proxy_relation"] = "低成本代理"
+            contract["strict_contract"] = "严格判据"
+            contract["proxy_strict_comparison"] = {
+                "ranking_status": "DIVERGENT",
+                "feasibility_status": "CONSISTENT",
+                "evidence_files": ["evidence.json"],
+            }
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("严格判据必须进入搜索" in issue["message"] for issue in report["issues"]))
+
+    def test_large_gap_budget_stop_requires_structural_response(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            question = valid_question(root)
+            question["budget"] = {"allocated": 10, "used": 10, "unit": "min"}
+            question["stop_certificate"] = {
+                "reason": "BUDGET_EXHAUSTED",
+                "summary": "预算耗尽",
+                "remaining_gap_or_unknown": "80%",
+                "untested_frontiers": ["另一结构路线"],
+                "evidence_files": ["evidence.json"],
+                "gap_assessment": {
+                    "computable": True,
+                    "optimality_gap": 0.8,
+                    "bound_quality": "INFORMATIVE",
+                    "response": "NONE",
+                },
+            }
+            ledger = self.write_ledger(root, [question])
+            report = challenge_audit.audit_ledger(ledger, root, ["q4"])
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("大 gap" in issue["message"] for issue in report["issues"]))
 
 
 class CompetitiveSearchPolicyTests(unittest.TestCase):
